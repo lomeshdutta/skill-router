@@ -18,7 +18,7 @@ A fresh agent (or human) must be able to resume this project from this file alon
 ## Approvals
 
 - Gate S (spec): approved 2026-09-17 — via plan approval (three-outcome session flow, find-skills hand-off without pre-seeding, cut list).
-- Gate P (publish): pending — private GitHub repo under ninjacoder13, then public. G3 done locally; still needs: the user's go-ahead to create the remote, CI green on GitHub, LICENSE holder name confirmed (currently the handle "Ninja Coder").
+- Gate P (publish): approved 2026-09-17 — github.com/lomeshdutta/skill-router, private first, public once CI is green; LICENSE and author "Lomesh Dutta"; history rewritten to that author before first push.
 
 ## Evidence ledger
 
@@ -43,4 +43,3 @@ A fresh agent (or human) must be able to resume this project from this file alon
 ## Blockers / decisions needed
 
 - Threshold tuning candidate: STRONG_PICK_MIN_PROB 0.85 vs firecrawl-scrape at 0.81/needs 0.4x → outcome C. Decide with more decision-log data, not one case.
-- Gate P: LICENSE copyright holder name (handle vs real name), and the noreply email in pyproject.

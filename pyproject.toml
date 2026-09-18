@@ -5,7 +5,7 @@ description = "Tell Claude Code which installed skill a session needs, using Jev
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
-authors = [{ name = "Ninja Coder" }]
+authors = [{ name = "Lomesh Dutta" }]
 requires-python = ">=3.12"
 keywords = ["claude-code", "agent-skills", "skills.sh", "typesafe", "jev", "routing"]
 classifiers = [
@@ -21,8 +21,8 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/ninjacoder13/skill-router"
-Issues = "https://github.com/ninjacoder13/skill-router/issues"
+Homepage = "https://github.com/lomeshdutta/skill-router"
+Issues = "https://github.com/lomeshdutta/skill-router/issues"
 
 [project.scripts]
 skill-router = "skill_router:main"

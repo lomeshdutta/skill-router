@@ -1,0 +1,26 @@
+name: eval (real Jev)
+# Manual: Actions → "eval (real Jev)" → Run workflow. Needs the TYPESAFE_API_KEY repository
+# secret. The report is attached to the run and printed in the job summary; it is not committed,
+# so the reports in evals/reports/ are always ones a maintainer ran and reviewed.
+on:
+  workflow_dispatch:
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync --all-groups
+      - name: Run the eval against real Jev
+        env:
+          TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
+        run: |
+          test -n "$TYPESAFE_API_KEY" || { echo "TYPESAFE_API_KEY secret is not set"; exit 1; }
+          uv run python evals/run_eval.py --no-remote --cwd .
+          cat evals/reports/*.md >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: eval-report
+          path: evals/reports/

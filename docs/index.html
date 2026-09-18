@@ -1,0 +1,379 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>skill-router — one question, one decision, then silence.</title>
+<meta name="description" content="Tell Claude Code which of your installed skills a session needs. One Jev call at session start, three possible answers, nothing more.">
+<meta property="og:title" content="skill-router">
+<meta property="og:description" content="Tell Claude Code which installed skill a session needs. One question, one decision, then silence.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230a84ff'/%3E%3Cpath d='M18 32h28M32 18l14 14-14 14' stroke='white' stroke-width='6' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E">
+<style>
+:root{
+  --bg:#ffffff;--bg-2:#f5f5f7;--fg:#1d1d1f;--fg-2:#6e6e73;--fg-3:#86868b;
+  --line:rgba(0,0,0,.08);--accent:#0071e3;--accent-2:#0a84ff;
+  --card:#ffffff;--term:#1c1c1e;--term-fg:#f5f5f7;
+  --ok:#30d158;--warn:#ff9f0a;--muted:#8e8e93;
+  --nav:rgba(255,255,255,.72);
+  --r:22px;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#000000;--bg-2:#161617;--fg:#f5f5f7;--fg-2:#a1a1a6;--fg-3:#86868b;
+  --line:rgba(255,255,255,.1);--card:#1c1c1e;--term:#0b0b0c;--nav:rgba(0,0,0,.6);
+}}
+:root[data-theme="dark"]{
+  --bg:#000000;--bg-2:#161617;--fg:#f5f5f7;--fg-2:#a1a1a6;--fg-3:#86868b;
+  --line:rgba(255,255,255,.1);--card:#1c1c1e;--term:#0b0b0c;--nav:rgba(0,0,0,.6);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+body{background:var(--bg);color:var(--fg);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display","Helvetica Neue",Inter,Segoe UI,Roboto,sans-serif;font-size:17px;line-height:1.47;letter-spacing:-.022em;overflow-x:hidden}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+code,pre,kbd{font-family:"SF Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.wrap{max-width:980px;margin:0 auto;padding:0 22px}
+.wrap-n{max-width:1200px;margin:0 auto;padding:0 22px}
+
+/* nav */
+nav{position:sticky;top:0;z-index:50;height:48px;background:var(--nav);backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px);border-bottom:1px solid var(--line)}
+nav .wrap{display:flex;align-items:center;justify-content:space-between;height:100%}
+nav .brand{font-weight:600;font-size:15px;color:var(--fg);display:flex;align-items:center;gap:8px}
+nav .brand svg{width:18px;height:18px}
+nav ul{display:flex;gap:26px;list-style:none;font-size:12.5px}
+nav ul a{color:var(--fg);opacity:.8}
+nav ul a:hover{opacity:1;text-decoration:none}
+@media(max-width:640px){nav ul li:not(:last-child){display:none}}
+
+/* hero */
+.hero{text-align:center;padding:112px 0 72px}
+.eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--fg-2);background:var(--bg-2);border-radius:999px;padding:6px 14px;margin-bottom:26px}
+.eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 3px rgba(48,209,88,.2)}
+h1{font-size:clamp(46px,8vw,88px);line-height:1.02;font-weight:700;letter-spacing:-.03em;max-width:14ch;margin:0 auto 22px}
+h1 .grad{background:linear-gradient(100deg,#0a84ff 0%,#5e5ce6 45%,#bf5af2 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
+.lede{font-size:clamp(19px,2.4vw,26px);line-height:1.35;color:var(--fg-2);max-width:34ch;margin:0 auto 34px;font-weight:400}
+.cta{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:8px;border-radius:999px;padding:13px 24px;font-size:17px;font-weight:500;transition:transform .15s ease,background .15s ease}
+.btn:hover{text-decoration:none;transform:translateY(-1px)}
+.btn.primary{background:var(--accent);color:#fff}
+.btn.primary:hover{background:var(--accent-2)}
+.btn.ghost{color:var(--accent)}
+.btn.ghost::after{content:"›";font-size:20px;line-height:0}
+
+/* terminal */
+.term-wrap{margin:56px auto 0;max-width:820px;perspective:1200px}
+.term{background:var(--term);color:var(--term-fg);border-radius:var(--r);box-shadow:0 30px 80px -20px rgba(0,0,0,.45),0 0 0 1px rgba(255,255,255,.06) inset;overflow:hidden;text-align:left;transform:rotateX(2deg);transition:transform .6s cubic-bezier(.2,.8,.2,1)}
+.term:hover{transform:rotateX(0)}
+.term-bar{display:flex;align-items:center;gap:8px;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.08)}
+.term-bar i{width:12px;height:12px;border-radius:50%;display:block}
+.term-bar i:nth-child(1){background:#ff5f57}.term-bar i:nth-child(2){background:#febc2e}.term-bar i:nth-child(3){background:#28c840}
+.term-bar span{margin-left:auto;font-size:12px;color:rgba(255,255,255,.45);font-family:inherit}
+.term pre{padding:22px 24px 26px;font-size:14.5px;line-height:1.7;white-space:pre-wrap;word-break:break-word;min-height:262px}
+.term .p{color:#8e8e93}.term .c{color:#64d2ff}.term .k{color:#ffd60a}.term .ok{color:var(--ok)}.term .w{color:var(--warn)}.term .m{color:var(--muted)}
+.term .cursor{display:inline-block;width:8px;height:16px;background:#f5f5f7;vertical-align:-3px;animation:blink 1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+.tabs{display:flex;gap:6px;justify-content:center;margin-top:18px;flex-wrap:wrap}
+.tab{border:0;background:var(--bg-2);color:var(--fg-2);border-radius:999px;padding:8px 16px;font:inherit;font-size:14px;font-weight:500;cursor:pointer;transition:all .15s}
+.tab[aria-selected="true"]{background:var(--fg);color:var(--bg)}
+.tab b{font-weight:700;margin-right:6px}
+
+/* sections */
+section{padding:110px 0}
+section.alt{background:var(--bg-2)}
+h2{font-size:clamp(34px,5vw,56px);line-height:1.08;font-weight:700;letter-spacing:-.03em;max-width:20ch}
+h2+p.sub{font-size:clamp(18px,2vw,22px);color:var(--fg-2);max-width:52ch;margin-top:16px}
+.center{text-align:center}.center h2,.center .sub{margin-left:auto;margin-right:auto}
+
+/* steps */
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:56px}
+@media(max-width:760px){.steps{grid-template-columns:1fr}}
+.card{background:var(--card);border-radius:var(--r);padding:30px 28px;box-shadow:0 2px 12px rgba(0,0,0,.04),0 0 0 1px var(--line)}
+.card .n{font-size:13px;font-weight:600;color:var(--accent);letter-spacing:.04em;text-transform:uppercase}
+.card h3{font-size:22px;font-weight:600;letter-spacing:-.02em;margin:10px 0 8px}
+.card p{color:var(--fg-2);font-size:16px}
+.card code{font-size:13.5px;background:var(--bg-2);padding:2px 7px;border-radius:6px;color:var(--fg)}
+
+/* outcomes */
+.outcomes{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:56px}
+@media(max-width:760px){.outcomes{grid-template-columns:1fr}}
+.oc{border-radius:var(--r);padding:34px 28px;color:#fff;min-height:250px;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden}
+.oc::before{content:"";position:absolute;inset:0;background:radial-gradient(120% 100% at 100% 0%,rgba(255,255,255,.22),transparent 60%)}
+.oc>*{position:relative}
+.oc .l{font-size:72px;font-weight:700;letter-spacing:-.05em;line-height:1}
+.oc h3{font-size:22px;font-weight:600;margin-top:20px}
+.oc p{opacity:.9;font-size:15.5px;margin-top:6px}
+.oc.a{background:linear-gradient(160deg,#0a84ff,#0040dd)}
+.oc.b{background:linear-gradient(160deg,#ff9f0a,#ff375f)}
+.oc.c{background:linear-gradient(160deg,#48484a,#1c1c1e)}
+
+/* stats */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin-top:56px}
+@media(max-width:900px){.stats{grid-template-columns:repeat(2,1fr)}}
+.stat{background:var(--card);border-radius:var(--r);padding:30px 26px;box-shadow:0 0 0 1px var(--line)}
+.stat .v{font-size:clamp(38px,5vw,54px);font-weight:700;letter-spacing:-.04em;line-height:1;background:linear-gradient(100deg,#0a84ff,#5e5ce6);-webkit-background-clip:text;background-clip:text;color:transparent}
+.stat .k{margin-top:10px;font-weight:600;font-size:15px}
+.stat .d{margin-top:4px;color:var(--fg-3);font-size:13.5px}
+.foot-note{margin-top:22px;color:var(--fg-3);font-size:13.5px;max-width:70ch}
+
+/* why jev */
+.split{display:grid;grid-template-columns:1.1fr .9fr;gap:60px;align-items:center;margin-top:20px}
+@media(max-width:800px){.split{grid-template-columns:1fr;gap:36px}}
+.split p{color:var(--fg-2);font-size:18px;margin-top:18px}
+.probe{background:var(--card);border-radius:var(--r);padding:26px;box-shadow:0 0 0 1px var(--line)}
+.probe .row{display:grid;grid-template-columns:1fr auto;gap:14px;align-items:center;padding:14px 0;border-bottom:1px solid var(--line)}
+.probe .row:last-child{border-bottom:0}
+.probe .row small{display:block;color:var(--fg-3);font-size:13px;margin-top:2px}
+.probe .bar{width:150px;height:8px;background:var(--bg-2);border-radius:999px;overflow:hidden;position:relative}
+.probe .bar i{position:absolute;inset:0;width:var(--w);background:linear-gradient(90deg,#0a84ff,#5e5ce6);border-radius:999px}
+.probe .num{font-variant-numeric:tabular-nums;font-weight:600;font-size:15px;min-width:44px;text-align:right}
+.probe .rhs{display:flex;align-items:center;gap:12px}
+
+/* install */
+.install{max-width:760px;margin:48px auto 0}
+.cmd{display:flex;align-items:center;gap:12px;background:var(--term);color:var(--term-fg);border-radius:14px;padding:14px 16px;margin-top:12px;font-size:14.5px;box-shadow:0 0 0 1px rgba(255,255,255,.06) inset}
+.cmd code{flex:1;white-space:pre-wrap;word-break:break-all}
+.cmd .p{color:#8e8e93;user-select:none}
+.cmd button{border:0;background:rgba(255,255,255,.1);color:#fff;border-radius:8px;padding:6px 10px;font:inherit;font-size:12.5px;cursor:pointer;transition:background .15s}
+.cmd button:hover{background:rgba(255,255,255,.2)}
+.install .lbl{margin-top:26px;font-weight:600;font-size:15px}
+.install .lbl small{display:block;font-weight:400;color:var(--fg-3);font-size:13.5px}
+
+/* nots */
+.nots{display:grid;grid-template-columns:repeat(2,1fr);gap:18px;margin-top:48px}
+@media(max-width:700px){.nots{grid-template-columns:1fr}}
+.not{display:flex;gap:16px;padding:24px;border-radius:var(--r);background:var(--card);box-shadow:0 0 0 1px var(--line)}
+.not .x{flex:0 0 32px;height:32px;border-radius:50%;background:var(--bg-2);display:grid;place-items:center;font-weight:700;color:var(--fg-2)}
+.not h3{font-size:18px;font-weight:600}
+.not p{color:var(--fg-2);font-size:15px;margin-top:4px}
+
+footer{padding:60px 0 50px;border-top:1px solid var(--line);color:var(--fg-3);font-size:13px}
+footer .wrap{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}
+footer a{color:var(--fg-2)}
+
+.reveal{opacity:0;transform:translateY(18px);transition:opacity .7s ease,transform .7s cubic-bezier(.2,.8,.2,1)}
+.reveal.in{opacity:1;transform:none}
+@media(prefers-reduced-motion:reduce){.reveal{opacity:1;transform:none;transition:none}.term{transform:none}.cursor{animation:none}}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="wrap">
+    <a class="brand" href="#top" aria-label="skill-router">
+      <svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14" fill="#0a84ff"/><path d="M18 32h28M32 18l14 14-14 14" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
+      skill-router
+    </a>
+    <ul>
+      <li><a href="#how">How it works</a></li>
+      <li><a href="#outcomes">Outcomes</a></li>
+      <li><a href="#evidence">Evidence</a></li>
+      <li><a href="#not">What it is not</a></li>
+      <li><a href="https://github.com/ninjacoder13/skill-router">GitHub</a></li>
+    </ul>
+  </div>
+</nav>
+
+<header class="hero" id="top">
+  <div class="wrap">
+    <div class="eyebrow"><span class="dot"></span> v0.2 · MIT · runs at session start</div>
+    <h1>One question.<br>One decision.<br><span class="grad">Then silence.</span></h1>
+    <p class="lede">Tell Claude Code which of your installed skills a session needs, before the work starts, and never hear about it again.</p>
+    <div class="cta">
+      <a class="btn primary" href="#install">Install in 60 seconds</a>
+      <a class="btn ghost" href="https://github.com/ninjacoder13/skill-router">View the source</a>
+    </div>
+
+    <div class="term-wrap">
+      <div class="term" role="region" aria-label="Terminal demo">
+        <div class="term-bar"><i></i><i></i><i></i><span>zsh — skill-router</span></div>
+        <pre id="term"></pre>
+      </div>
+      <div class="tabs" role="tablist" aria-label="Choose an outcome">
+        <button class="tab" role="tab" data-o="A" aria-selected="true"><b>A</b>Installed skill fits</button>
+        <button class="tab" role="tab" data-o="B" aria-selected="false"><b>B</b>Search skills.sh</button>
+        <button class="tab" role="tab" data-o="C" aria-selected="false"><b>C</b>No skill needed</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<section id="how">
+  <div class="wrap">
+    <div class="reveal">
+      <h2>Skills pile up.<br>Claude doesn’t notice.</h2>
+      <p class="sub">The author’s machine has 131 skills across project, user, plugin, app and built-in scopes. A skill that is installed but never loaded is a cost with no return. skill-router fixes that with a single decision at the start of every session.</p>
+    </div>
+    <div class="steps">
+      <div class="card reveal">
+        <div class="n">Step 1</div>
+        <h3>The session opens</h3>
+        <p>A <code>SessionStart</code> hook tells Claude to infer your goal from the first message, or to ask exactly one question if it can’t.</p>
+      </div>
+      <div class="card reveal">
+        <div class="n">Step 2</div>
+        <h3>One Jev call</h3>
+        <p>Claude runs <code>skill-router intent set "…"</code>. Every installed skill is ranked against the goal in a single call, in about 350 ms, for roughly $0.0004.</p>
+      </div>
+      <div class="card reveal">
+        <div class="n">Step 3</div>
+        <h3>Then nothing</h3>
+        <p>One of three answers, relayed once. No per-prompt nagging. If you pivot, you type <code>/intent &lt;new goal&gt;</code> yourself.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="alt" id="outcomes">
+  <div class="wrap center">
+    <div class="reveal">
+      <h2>Three answers. Never a fourth.</h2>
+      <p class="sub">Jev returns a calibrated probability for every skill plus a “does any skill help at all” signal. Thresholds on those numbers, not prose, pick the outcome.</p>
+    </div>
+    <div class="outcomes">
+      <div class="oc a reveal"><div><div class="l">A</div><h3>Load these</h3><p>Relevant installed skills, named with their probabilities. Claude loads them when the work starts.</p></div></div>
+      <div class="oc b reveal"><div><div class="l">B</div><h3>Search skills.sh</h3><p>Nothing installed fits. Claude is pointed at the find-skills skill, with no candidates pre-seeded, so its own quality filter does the work.</p></div></div>
+      <div class="oc c reveal"><div><div class="l">C</div><h3>No skill needed</h3><p>General assistance is fine. The tool says so once and stays quiet for the rest of the session.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<section id="evidence">
+  <div class="wrap">
+    <div class="reveal">
+      <h2>Measured, not promised.</h2>
+      <p class="sub">Evaluated 2026-09-17 against real Jev with 131 installed skills. None of the prompts named the expected skill. The harness and cases ship in the repo, so you can re-run it against your own catalog.</p>
+    </div>
+    <div class="stats">
+      <div class="stat reveal"><div class="v">9/10</div><div class="k">Session goals → outcome A</div><div class="d">top-1 correct when the skill is installed</div></div>
+      <div class="stat reveal"><div class="v">4/5</div><div class="k">Not installed → outcome B</div><div class="d">handed off to find-skills</div></div>
+      <div class="stat reveal"><div class="v">3/3</div><div class="k">No skill → outcome C</div><div class="d">zero false suggestions</div></div>
+      <div class="stat reveal"><div class="v">~360<span style="font-size:.5em"> ms</span></div><div class="k">Median latency</div><div class="d">≈ $0.0004 per session</div></div>
+    </div>
+    <p class="foot-note reveal">The one outcome-A miss was <code>firecrawl-scrape</code> ranked first at 0.81 but gated to “no skill” by a low needs-a-skill probability, a threshold question tracked openly in the repo. The one outcome-B miss routed a Remotion goal to an installed skill whose description explicitly lists Remotion, which is correct by that skill’s own claim.</p>
+  </div>
+</section>
+
+<section class="alt" id="why">
+  <div class="wrap">
+    <div class="split">
+      <div class="reveal">
+        <h2>Why a decision model, not a chat model.</h2>
+        <p>An LLM classifier needs a prompt, writes prose, and has to be parsed. Its “confidence” is whatever it typed. Jev, from TypeSafe AI, answers typed questions with a probability for each of up to 255 options in one parallel evaluation. It never returns a malformed answer and costs two orders of magnitude less.</p>
+        <p>A probe on this catalog confirmed it matches meaning, not words.</p>
+      </div>
+      <div class="probe reveal" aria-label="Semantic probe results">
+        <div class="row"><div>Paraphrase sharing no words with the skill’s description<small>should match</small></div><div class="rhs"><div class="bar"><i style="--w:92%"></i></div><div class="num">0.92</div></div></div>
+        <div class="row"><div>Prompt stuffed with the skill’s trigger words, about an unrelated topic<small>should not match</small></div><div class="rhs"><div class="bar"><i style="--w:0%"></i></div><div class="num">0.00</div></div></div>
+        <div class="row"><div>Lexical decoy, partial overlap<small>should stay low</small></div><div class="rhs"><div class="bar"><i style="--w:49%"></i></div><div class="num">0.49</div></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="install">
+  <div class="wrap center">
+    <div class="reveal">
+      <h2>Install in 60 seconds.</h2>
+      <p class="sub">Python 3.12 and <a href="https://docs.astral.sh/uv/">uv</a>. No key? Everything runs in a clearly labelled mock mode, including the tests and the eval.</p>
+    </div>
+    <div class="install" style="text-align:left">
+      <div class="lbl">Get it</div>
+      <div class="cmd"><span class="p">$</span><code>git clone https://github.com/ninjacoder13/skill-router && cd skill-router && uv sync</code><button data-copy>Copy</button></div>
+      <div class="lbl">Add your TypeSafe key <small>from console.typesafe.ai · the key is sent only to api.typesafe.ai</small></div>
+      <div class="cmd"><span class="p">$</span><code>cp .env.example .env</code><button data-copy>Copy</button></div>
+      <div class="lbl">Register the hook <small>for this project · add <code>--settings ~/.claude/settings.json</code> to do it for every project</small></div>
+      <div class="cmd"><span class="p">$</span><code>uv run skill-router install-hook --write</code><button data-copy>Copy</button></div>
+      <div class="lbl">Recommended for outcome B <small>lets Claude search skills.sh with a quality filter</small></div>
+      <div class="cmd"><span class="p">$</span><code>npx skills add vercel-labs/skills --skill find-skills -g</code><button data-copy>Copy</button></div>
+    </div>
+  </div>
+</section>
+
+<section class="alt" id="not">
+  <div class="wrap">
+    <div class="reveal">
+      <h2>What it is not.</h2>
+      <p class="sub">The cut list is part of the product. Each of these was considered and rejected for a reason.</p>
+    </div>
+    <div class="nots">
+      <div class="not reveal"><div class="x">✕</div><div><h3>Not per-prompt</h3><p>v0.1 ran on every prompt. It scored 10/10 on the eval and was still noise: once a session was about skills it suggested skill-creator four prompts in a row. Kept as an opt-in.</p></div></div>
+      <div class="not reveal"><div class="x">✕</div><div><h3>Not an installer</h3><p>It prints the <code>npx skills add</code> command and tells Claude to ask you. It never installs anything on its own.</p></div></div>
+      <div class="not reveal"><div class="x">✕</div><div><h3>Not a thumb on the scale</h3><p>When nothing installed fits, it hands off to find-skills without pre-seeding candidates, so that skill’s install counts and source reputation decide.</p></div></div>
+      <div class="not reveal"><div class="x">✕</div><div><h3>Not a service</h3><p>The catalog is what is on your disk. No server, no telemetry. It never blocks or crashes a Claude Code session; that invariant has its own test.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div>skill-router · MIT · built on <a href="https://typesafe.ai">Jev by TypeSafe AI</a> and <a href="https://skills.sh">skills.sh</a></div>
+    <div><a href="https://github.com/ninjacoder13/skill-router">GitHub</a> · <a href="https://github.com/ninjacoder13/skill-router/blob/main/SECURITY.md">Security</a> · <a href="https://github.com/ninjacoder13/skill-router/blob/main/CONTRIBUTING.md">Contributing</a></div>
+  </div>
+</footer>
+
+<script>
+(function(){
+  var SCRIPTS = {
+    A: [
+      ['p','$ '],['c','skill-router intent set '],['k','"write outreach emails to fintech VPs"'],['n','\n'],
+      ['m','[skill-router] Session goal: write outreach emails to fintech VPs\n'],
+      ['m','Jev: task kind '],['k','`outreach`'],['m',', needs-a-skill 0.91.\n'],
+      ['ok','Relevant installed skills for this session:\n'],
+      ['','  /cold-email  '],['ok','(probability 1.00)'],['','  — Cold outreach sequences with reply-rate heuristics.\n'],
+      ['','Load /cold-email with the Skill tool when the work starts. Do not install anything.\n']
+    ],
+    B: [
+      ['p','$ '],['c','skill-router intent set '],['k','"build a Remotion video from a script"'],['n','\n'],
+      ['m','[skill-router] Session goal: build a Remotion video from a script\n'],
+      ['m','Jev: task kind '],['k','`media`'],['m',', needs-a-skill 0.88.\n'],
+      ['w','No installed skill fits this goal.\n'],
+      ['','Use the '],['k','find-skills'],['',' skill to search skills.sh, then ask the user before installing anything.\n']
+    ],
+    C: [
+      ['p','$ '],['c','skill-router intent set '],['k','"explain what a hook is in Claude Code"'],['n','\n'],
+      ['m','[skill-router] Session goal: explain what a hook is in Claude Code\n'],
+      ['m','Jev: task kind '],['k','`question`'],['m',', needs-a-skill 0.12.\n'],
+      ['','General assistance is fine; no skill needed this session.\n']
+    ]
+  };
+  var el = document.getElementById('term'), timer = null, token = 0;
+  function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;');}
+  function play(key){
+    clearTimeout(timer); var my = ++token; var parts = SCRIPTS[key]; el.innerHTML='';
+    var i=0, j=0, html='';
+    var reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if(reduced){ el.innerHTML = parts.map(function(p){return p[0]?'<span class="'+p[0]+'">'+esc(p[1])+'</span>':esc(p[1]);}).join(''); return; }
+    function step(){
+      if(my!==token) return;
+      if(i>=parts.length){ el.innerHTML = html + '<span class="cursor"></span>'; return; }
+      var cls=parts[i][0], txt=parts[i][1];
+      j++;
+      var chunk = txt.slice(0,j);
+      var cur = cls && cls!=='n' ? '<span class="'+cls+'">'+esc(chunk)+'</span>' : esc(chunk);
+      el.innerHTML = html + cur + '<span class="cursor"></span>';
+      var delay = 14;
+      if(j>=txt.length){ html += cur; i++; j=0; delay = (cls==='n') ? 420 : (txt.slice(-1)==='\n' ? 160 : 40); if(i===1) delay=8; }
+      else if(i===0||cls==='c'||cls==='k'&&i<4){ delay = 28; }
+      timer=setTimeout(step, delay);
+    }
+    step();
+  }
+  var tabs=[].slice.call(document.querySelectorAll('.tab'));
+  tabs.forEach(function(t){ t.addEventListener('click',function(){ tabs.forEach(function(x){x.setAttribute('aria-selected', x===t?'true':'false');}); play(t.dataset.o); }); });
+  play('A');
+
+  document.querySelectorAll('[data-copy]').forEach(function(b){
+    b.addEventListener('click',function(){
+      var txt=b.parentNode.querySelector('code').textContent;
+      function done(){ b.textContent='Copied'; setTimeout(function(){b.textContent='Copy';},1400); }
+      if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(txt).then(done,done); } else { done(); }
+    });
+  });
+
+  if('IntersectionObserver' in window){
+    var io=new IntersectionObserver(function(es){ es.forEach(function(e){ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target);} }); },{rootMargin:'0px 0px -8% 0px'});
+    document.querySelectorAll('.reveal').forEach(function(n){io.observe(n);});
+  } else { document.querySelectorAll('.reveal').forEach(function(n){n.classList.add('in');}); }
+})();
+</script>
+</body>
+</html>

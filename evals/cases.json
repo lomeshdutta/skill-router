@@ -165,6 +165,11 @@
     {
       "expect_outcome": "C",
       "goal": "chat about what to build next"
+    },
+    {
+      "expect_outcome": "C",
+      "goal": "open-source this repo on GitHub and publish the eval results",
+      "note": "observed 2026-09-18: Jev picked skill-creator at 0.78; a known miss kept in the eval"
     }
   ]
 }

@@ -7,7 +7,7 @@ Predicts which Claude Code skill a session needs. One Jev (TypeSafe AI) call per
 - No `TYPESAFE_API_KEY` → automatic MOCK mode (keyword overlap). Output is labelled `mock`.
 - Decisions are appended to `~/.cache/skill-router/decisions.jsonl`; `skill-router log` reads it. That file is the eval set for tuning thresholds.
 - Ground truth for accuracy claims: `evals/cases.json` → `uv run python evals/run_eval.py` → `evals/reports/`.
-- Open-source bound (MIT). Currently local git only; publishing is Gate P in STATE.md. Keep absolute home-directory paths out of tracked files.
+- Open source (MIT) at github.com/lomeshdutta/skill-router; this repo is pinned to the lomeshdutta GitHub account. Keep absolute home-directory paths out of tracked files.
 
 ## Loop-engineering methodology (loop-factory v0.3)
 - Read `CONTEXT.md` (binding terms + evidence rules) then `STATE.md` (live state; update before session end). `SPEC.md` holds the mechanic and, bindingly, what is NOT being built.

@@ -20,7 +20,7 @@ pivot?        ─► you type  /intent <new goal>
 ## Install
 
 ```bash
-git clone https://github.com/ninjacoder13/skill-router && cd skill-router
+git clone https://github.com/lomeshdutta/skill-router && cd skill-router
 uv sync
 cp .env.example .env            # paste your TypeSafe key (console.typesafe.ai)
 uv run skill-router install-hook --write      # registers the SessionStart hook for this project
