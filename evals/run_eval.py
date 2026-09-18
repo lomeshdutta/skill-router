@@ -59,8 +59,7 @@ def main() -> None:
         spoke = rec.should_suggest and hit1
         spoke_right += spoke
         verdict = "PASS" if spoke else ("top-3" if hit3 else "MISS")
-        unc = rec.uncovered_tech_terms(c["prompt"], by_name.get(rec.skill or "", None).description if rec.skill in by_name else "")
-        extra_fired += bool(unc)
+        unc: list[str] = []  # v0.1's second search path was removed in v0.2; column kept for comparability
         lines.append(f"| {c['expect']} | {rec.skill or 'none'} | {rec.skill_probability:.2f} | {rec.skill_confidence:.2f} | {rec.needs_skill:.2f} | {'yes' if rec.should_suggest else 'no'} | {', '.join(ranked[:3])} | {('YES: ' + ', '.join(unc)) if unc else 'no'} | {verdict} |")
         print(f"[installed] {c['expect']:18s} -> {rec.skill or 'none':18s} p={rec.skill_probability:.2f} {verdict}", flush=True)
     lines += ["", f"**Top-1: {top1}/10 · Top-3: {top3}/10 · Hook spoke with the right skill: {spoke_right}/10 · Unwanted extra skills.sh search: {extra_fired}/10**", ""]
@@ -73,8 +72,8 @@ def main() -> None:
         rec = route(build_state(c["prompt"], cwd=CWD), skills)
         lat.append(rec.latency_ms); tok.append(rec.usage.get("input_tokens") or 0)
         false_pos = rec.should_suggest
-        unc = rec.uncovered_tech_terms(c["prompt"], by_name[rec.skill].description if rec.skill in by_name else "")
-        fires = rec.should_search_skills_sh or bool(unc)
+        unc: list[str] = []
+        fires = rec.should_search_skills_sh
         fp += false_pos; fired += fires
         r_topic = r_prompt = r_tech = None
         q_tech = skills_sh.build_query(c["prompt"], rec.topic, rec.task_kind)
@@ -85,9 +84,32 @@ def main() -> None:
             r_tech = remote_hit(c["expect"], skills_sh.find(q_tech, limit=5))
         hit_topic += r_topic is not None; hit_prompt += r_prompt is not None; hit_tech += r_tech is not None
         fmt = lambda r: "-" if r is None else (f"#{r}" if r > 0 else f"repo #{-r}")
-        lines.append(f"| {c['expect']} | {rec.skill or 'none'} | {rec.skill_probability:.2f} | {(rec.skill + ' (uncovered: ' + ', '.join(unc) + ')') if false_pos and unc else ('YES ' + rec.skill) if false_pos else 'no'} | {rec.names_specific_tech:.2f} | {'yes' if fires else 'NO'} | {rec.topic} | {fmt(r_topic)} | {fmt(r_prompt)} | {fmt(r_tech)} | `{q_tech}` |")
+        lines.append(f"| {c['expect']} | {rec.skill or 'none'} | {rec.skill_probability:.2f} | {(rec.skill + ' (uncovered: ' + ', '.join(unc) + ')') if false_pos and unc else ('YES ' + rec.skill) if false_pos else 'no'} | - | {'yes' if fires else 'NO'} | {rec.topic} | {fmt(r_topic)} | {fmt(r_prompt)} | {fmt(r_tech)} | `{q_tech}` |")
         print(f"[remote]    {c['expect'][:40]:40s} local={rec.skill or 'none':16s} fp={false_pos} unc={unc} fired={fires} topic={fmt(r_topic)} prompt={fmt(r_prompt)} tech={fmt(r_tech)} q={q_tech!r}", flush=True)
     lines += ["", f"**Local suggestion made: {fp}/10 · skills.sh search fired (either path): {fired}/10 · Target found via topic query: {hit_topic}/10 · via prompt query: {hit_prompt}/10 · via tech query (now used by the hook): {hit_tech}/10**", ""]
+
+    # ----------------------------------------------------------- session goals
+    lines += ["## Session goals (v0.2 flow: one goal per session, `intent set`)", "",
+              "| goal | expected | Jev top-1 | p | needs | outcome | verdict |", "|---|---|---|---|---|---|---|"]
+    g_top1 = 0
+    for c in CASES["session_goals"]:
+        rec = route(build_state(c["goal"], cwd=CWD, goal=True), skills)
+        lat.append(rec.latency_ms); tok.append(rec.usage.get("input_tokens") or 0)
+        hit = rec.skill == c["expect"] and rec.outcome == "A"
+        g_top1 += hit
+        lines.append(f"| {c['goal'][:50]} | {c['expect']} | {rec.skill or 'none'} | {rec.skill_probability:.2f} | {rec.needs_skill:.2f} | {rec.outcome} | {'PASS' if hit else 'MISS'} |")
+        print(f"[goal]      {c['expect']:18s} -> {rec.skill or 'none':18s} p={rec.skill_probability:.2f} outcome={rec.outcome} {'PASS' if hit else 'MISS'}", flush=True)
+    g_b = g_c = 0
+    for key, label, counter in (("session_goals_not_installed", "expect B", "b"), ("session_goals_no_skill", "expect C", "c")):
+        for c in CASES[key]:
+            rec = route(build_state(c["goal"], cwd=CWD, goal=True), skills)
+            lat.append(rec.latency_ms); tok.append(rec.usage.get("input_tokens") or 0)
+            ok = rec.outcome == c["expect_outcome"]
+            if counter == "b": g_b += ok
+            else: g_c += ok
+            lines.append(f"| {c['goal'][:50]} | {label} | {rec.skill or 'none'} | {rec.skill_probability:.2f} | {rec.needs_skill:.2f} | {rec.outcome} | {'PASS' if ok else 'MISS'} |")
+            print(f"[goal]      {label:18s} -> {rec.skill or 'none':18s} p={rec.skill_probability:.2f} outcome={rec.outcome} {'PASS' if ok else 'MISS'}", flush=True)
+    lines += ["", f"**Installed goals top-1 with outcome A: {g_top1}/10 · Not-installed goals → outcome B: {g_b}/5 · No-skill goals → outcome C: {g_c}/3**", ""]
 
     # ------------------------------------------------------------------- bonus
     lines += ["## Bonus: ambiguous case (Jev picked skill-creator; its description covers 'run evals to test a skill', so this is arguably correct)", ""]

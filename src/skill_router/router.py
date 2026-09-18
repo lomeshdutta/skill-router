@@ -23,6 +23,7 @@ from typing import Any
 from skill_router import questions as Q
 from skill_router.catalog import SkillInfo
 
+OUTCOME_INSTALLED, OUTCOME_SEARCH, OUTCOME_NONE = "A", "B", "C"
 MOCK_ENV = "SKILL_ROUTER_MOCK"
 API_KEY_ENV = "TYPESAFE_API_KEY"
 DEFAULT_TIMEOUT_SECONDS = 8.0
@@ -63,7 +64,6 @@ class Recommendation:
     skill_probabilities: dict[str, float]  # top few, descending
     topic: str | None
     topic_confidence: float
-    names_specific_tech: float = 0.0
     usage: dict[str, int | None] = field(default_factory=dict)
 
     @property
@@ -94,26 +94,27 @@ class Recommendation:
             and self.topic not in (None, Q.NONE_OPTION)
         )
 
-    def uncovered_tech_terms(self, prompt: str, chosen_description: str) -> list[str]:
-        """Tech terms in the prompt that the suggested skill's name/description never mention.
+    @property
+    def best_local_probability(self) -> float:
+        return max((p for n, p in self.skill_probabilities.items() if n != Q.NONE_OPTION), default=0.0)
 
-        Non-empty means: we did pick a local skill, but the user named something specific
-        (Remotion, Vercel, Azure...) that the skill does not cover, so skills.sh may have a
-        better fit. Only meaningful when should_suggest is True.
-        """
-        if not self.should_suggest or self.names_specific_tech < Q.TECH_SEARCH_MIN_NAMES:
-            return []
-        if self.task_kind in Q.TECH_SEARCH_SKIP_KINDS:
-            return []
-        from skill_router.skills_sh import extract_tech_terms
-
-        haystack = f"{self.skill} {chosen_description}".lower()
-        return [term for term in extract_tech_terms(prompt) if term not in haystack]
+    @property
+    def outcome(self) -> str:
+        """A: relevant installed skill(s). B: nothing installed fits, search skills.sh. C: no skill needed."""
+        if self.should_suggest:
+            return OUTCOME_INSTALLED
+        if self.needs_skill < Q.NEEDS_SKILL_MIN:
+            return OUTCOME_NONE
+        if self.best_local_probability < Q.OUTCOME_B_MAX_LOCAL_PROB:
+            return OUTCOME_SEARCH
+        return OUTCOME_INSTALLED  # weak but real candidates; list them
 
     def to_dict(self) -> dict[str, Any]:
         d = asdict(self)
         d["should_suggest"] = self.should_suggest
         d["should_search_skills_sh"] = self.should_search_skills_sh
+        d["skill_probability"] = self.skill_probability
+        d["outcome"] = self.outcome
         return d
 
 
@@ -134,7 +135,6 @@ def _route_jev(state: dict[str, Any], skills: list[SkillInfo], *, top_k: int) ->
 
     qs = {
         "needs_skill": Q.NEEDS_SKILL,
-        "names_specific_tech": Q.NAMES_SPECIFIC_TECH,
         "task_kind": Q.TASK_KIND,
         "skills_sh_topic": Q.SKILLS_SH_TOPIC,
     }
@@ -163,7 +163,6 @@ def _route_jev(state: dict[str, Any], skills: list[SkillInfo], *, top_k: int) ->
         skill_probabilities=probs,
         topic=None if topic.choice == Q.NONE_OPTION else topic.choice,
         topic_confidence=topic.confidence,
-        names_specific_tech=nouls["names_specific_tech"].noul,
         usage={"input_tokens": resp.usage.input_tokens, "output_tokens": resp.usage.output_tokens},
     )
 
@@ -196,7 +195,7 @@ def _confidence(probs: dict[str, float]) -> float:
 
 def _route_mock(state: dict[str, Any], skills: list[SkillInfo], *, top_k: int) -> Recommendation:
     t0 = time.perf_counter()
-    prompt_tokens = _tokens(state.get("user_prompt", ""))
+    prompt_tokens = _tokens(state.get("user_prompt") or state.get("session_goal") or "")
     scores: dict[str, float] = {}
     for s in skills:
         name_tokens = _tokens(s.name.replace("-", " "))
@@ -228,10 +227,4 @@ def _route_mock(state: dict[str, Any], skills: list[SkillInfo], *, top_k: int) -
         skill_probabilities=dict(list(ranked.items())[:top_k]),
         topic=None if topic == Q.NONE_OPTION else topic,
         topic_confidence=_confidence(topic_probs),
-        names_specific_tech=0.8 if _mock_names_tech(state.get("user_prompt", "")) else 0.15,
     )
-
-
-def _mock_names_tech(prompt: str) -> bool:
-    from skill_router.skills_sh import _TECH_HINTS, extract_tech_terms
-    return any(t in _TECH_HINTS for t in extract_tech_terms(prompt))

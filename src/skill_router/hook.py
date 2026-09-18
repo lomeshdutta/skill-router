@@ -1,4 +1,8 @@
-"""Claude Code `UserPromptSubmit` hook.
+"""Claude Code `UserPromptSubmit` hook — LEGACY, opt-in since v0.2.
+
+v0.1 ran this on every prompt. It scored well on the eval but was noisy in real sessions, so
+v0.2 routes once per session instead (see `cli.cmd_intent`). This stays for anyone who wants
+per-prompt suggestions: register it with `skill-router install-hook --event UserPromptSubmit`.
 
 Claude Code pipes a JSON object on stdin (session_id, transcript_path, cwd, prompt, ...).
 Whatever we print as `additionalContext` is injected into Claude's context alongside the
@@ -40,7 +44,7 @@ def should_skip(prompt: str) -> str | None:
     return None
 
 
-def format_context(rec: Recommendation, remote: list[skills_sh.RemoteSkill], uncovered: list[str] | None = None) -> tuple[str, str]:
+def format_context(rec: Recommendation, remote: list[skills_sh.RemoteSkill]) -> tuple[str, str]:
     """Return (additionalContext for Claude, short systemMessage for the human)."""
     tag = "skill-router" + (" (mock, no TYPESAFE_API_KEY)" if rec.source == "mock" else "")
     lines = [f"[{tag}] Jev classified this prompt as `{rec.task_kind}` "
@@ -64,11 +68,7 @@ def format_context(rec: Recommendation, remote: list[skills_sh.RemoteSkill], unc
     else:
         lines.append("No installed skill clearly applies.")
     if remote:
-        if uncovered:
-            named = ", ".join(uncovered)
-            lines.append(f"Caveat: the request names {named}, which `{rec.skill}` does not cover. skills.sh has more specific candidates:")
-        else:
-            lines.append(f"Nothing installed fits well, but skills.sh has candidates under topic `{rec.topic}`:")
+        lines.append(f"Nothing installed fits well, but skills.sh has candidates under topic `{rec.topic}`:")
         for r in remote:
             lines.append(f"  - {r.package}@{r.skill} ({r.installs} installs) → `{r.install_command}`  {r.url}")
         lines.append("Mention the top one to the user as an optional install; do not install without asking.")
@@ -96,15 +96,9 @@ def run(payload: dict[str, Any], *, search_remote: bool = True) -> dict[str, Any
     skills = catalog.discover(cwd)
     rec = route(state, skills)
     remote: list[skills_sh.RemoteSkill] = []
-    uncovered: list[str] = []
     if search_remote and rec.should_search_skills_sh and rec.topic:
         remote = skills_sh.find(skills_sh.build_query(prompt, rec.topic, rec.task_kind), limit=3)
-    elif search_remote and rec.should_suggest:
-        chosen = next((s.description for s in skills if s.name == rec.skill), "")
-        uncovered = rec.uncovered_tech_terms(prompt, chosen)
-        if uncovered:
-            remote = skills_sh.find(skills_sh.build_query(prompt, rec.topic, rec.task_kind), limit=3)
-    context, human = format_context(rec, remote, uncovered)
+    context, human = format_context(rec, remote)
     _log({
         "ts": time.time(),
         "session_id": payload.get("session_id"),
@@ -114,7 +108,6 @@ def run(payload: dict[str, Any], *, search_remote: bool = True) -> dict[str, Any
         "n_skills": len(skills),
         "recommendation": rec.to_dict(),
         "remote": [r.to_dict() for r in remote],
-        "uncovered_tech_terms": uncovered,
     })
     out: dict[str, Any] = {
         "hookSpecificOutput": {"hookEventName": "UserPromptSubmit", "additionalContext": context},

@@ -95,9 +95,12 @@ def recent_user_prompts(transcript_path: str | None, exclude: str = "") -> list[
     return list(reversed(prompts))
 
 
-def build_state(prompt: str, cwd: str | None = None, transcript_path: str | None = None) -> dict[str, Any]:
+def build_state(
+    prompt: str, cwd: str | None = None, transcript_path: str | None = None, *, goal: bool = False
+) -> dict[str, Any]:
+    """`goal=True` marks the text as a one-sentence session goal rather than a single request."""
     root = Path(cwd or os.getcwd())
-    state: dict[str, Any] = {"user_prompt": prompt.strip()}
+    state: dict[str, Any] = {("session_goal" if goal else "user_prompt"): prompt.strip()}
     try:
         project: dict[str, Any] = {
             "directory": root.name,

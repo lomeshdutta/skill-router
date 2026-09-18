@@ -130,25 +130,52 @@ def test_build_query_prefers_tech_terms():
     assert skills_sh.build_query("help me think through this idea", "productivity", "planning_strategy") == "productivity planning strategy"
 
 
-def test_uncovered_tech_terms_fires_only_when_specific_tech_named():
-    from skill_router.router import Recommendation
-    base = dict(source="jev", model="m", latency_ms=1, task_kind="build_feature", task_kind_confidence=1.0,
-                topic="video-media", topic_confidence=0.9, needs_skill=0.7)
-    video_desc = "Plan and script marketing videos for YouTube, ads, and product demos"
-    rec = Recommendation(skill="video", skill_confidence=0.98, skill_probabilities={"video": 0.98}, names_specific_tech=0.9, **base)
-    assert rec.uncovered_tech_terms("build a programmatic video with Remotion that animates our stats", video_desc) == ["remotion"]
-    generic = Recommendation(skill="xlsx", skill_confidence=0.97, skill_probabilities={"xlsx": 0.97}, names_specific_tech=0.1, **base)
-    assert generic.uncovered_tech_terms("build a spreadsheet of MRR by cohort", "Create Excel spreadsheets") == []
-
-
 def test_extract_tech_terms_skips_urls():
     assert skills_sh.extract_tech_terms("grab the text of https://stripe.com/pricing as clean markdown") == []
     assert "next.js" in skills_sh.extract_tech_terms("set up Prisma in this next.js app")
 
 
-def test_uncovered_tech_terms_skips_research_about_a_product():
-    from skill_router.router import Recommendation
-    rec = Recommendation(source="jev", model="m", latency_ms=1, task_kind="research", task_kind_confidence=1.0,
-                         topic="research", topic_confidence=0.9, needs_skill=0.6, skill="last30days",
-                         skill_confidence=0.99, skill_probabilities={"last30days": 0.99}, names_specific_tech=0.9)
-    assert rec.uncovered_tech_terms("what are people saying about Cursor vs Claude Code", "Research what people say about any topic") == []
+def test_session_round_trip(tmp_path, monkeypatch):
+    from skill_router import session
+    monkeypatch.setattr(session, "SESSIONS_DIR", tmp_path)
+    assert session.load("abc") is None
+    session.save("abc/../x", {"goal": "ship it"})
+    assert session.load("abc/../x")["goal"] == "ship it"
+    assert not (tmp_path.parent / "x.json").exists()  # id is sanitised, no path escape
+    assert session.clear("abc/../x") and session.load("abc/../x") is None
+
+
+def test_intent_outcomes_in_mock_mode(tmp_path, monkeypatch, capsys):
+    from skill_router import cli, session
+    monkeypatch.setattr(session, "SESSIONS_DIR", tmp_path)
+    monkeypatch.setattr(hook, "LOG_PATH", tmp_path / "log.jsonl")
+    monkeypatch.setattr(catalog, "discover", lambda cwd=None: SKILLS)
+    assert cli.main(["intent", "set", "--session", "s1", "--json", "write cold outreach emails for sales prospecting"]) == 0
+    out = json.loads(capsys.readouterr().out)
+    assert out["outcome"] == "A" and out["recommendation"]["skill"] == "cold-email"
+    assert session.load("s1")["summary"] == "load /cold-email"
+    assert cli.main(["intent", "set", "--session", "s2", "--json", "what time is it"]) == 0
+    assert json.loads(capsys.readouterr().out)["outcome"] == "C"
+
+
+def test_session_start_hook_shapes(tmp_path, monkeypatch, capsys):
+    import io, sys as _sys
+    from skill_router import cli, session
+    monkeypatch.setattr(session, "SESSIONS_DIR", tmp_path)
+    monkeypatch.setattr(hook, "LOG_PATH", tmp_path / "log.jsonl")
+    for stdin_text, expect in [
+        (json.dumps({"session_id": "n1", "source": "startup"}), "ask exactly one question"),
+        ("not json", None),
+    ]:
+        monkeypatch.setattr(_sys, "stdin", io.StringIO(stdin_text))
+        assert cli.main(["session-start"]) == 0
+        out = capsys.readouterr().out
+        if expect is None:
+            assert out == ""
+        else:
+            d = json.loads(out)["hookSpecificOutput"]
+            assert d["hookEventName"] == "SessionStart" and expect in d["additionalContext"]
+    session.save("r1", {"goal": "evaluate the router", "summary": "no skill needed"})
+    monkeypatch.setattr(_sys, "stdin", io.StringIO(json.dumps({"session_id": "r1", "source": "resume"})))
+    assert cli.main(["session-start"]) == 0
+    assert "Session goal on record" in capsys.readouterr().out

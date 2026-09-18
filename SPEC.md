@@ -1,7 +1,7 @@
 <!-- loop-factory doctrine v0.4.1 · a change to the mechanic edits this file and a decision record in the same commit as the code -->
 # skill-router — product spec
 
-Status: draft
+Status: approved at Gate S 2026-09-17
 
 ## What we are building
 
@@ -44,8 +44,8 @@ Falsified if: top-1 accuracy on the 10 installed-skill goals is below 7/10, in w
 
 ## Success metric
 
-Installed-skill top-1 accuracy on the eval, currently 10/10 for single prompts (Proven) and unmeasured for session goals (G2's job). Success for v0.2: ≥ 9/10 on session goals with zero suggestions on the five "no skill" goals.
+Installed-skill top-1 accuracy on the eval: 10/10 for single prompts and 9/10 for session goals (both Proven, evals/report-2026-09-17.md). Success for v0.2: ≥ 9/10 on session goals with zero suggestions on the five "no skill" goals.
 
 ## Gate S
 
-Pending. Approving this spec approves: dropping per-prompt routing, the three-outcome session flow, the find-skills hand-off without pre-seeding, and the cut list above.
+Approved 2026-09-17 via plan approval. This approved: dropping per-prompt routing, the three-outcome session flow, the find-skills hand-off without pre-seeding, and the cut list above.

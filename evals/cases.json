@@ -1,29 +1,170 @@
 {
   "installed": [
-    {"expect": "cold-email", "prompt": "draft a 3-step outreach sequence to VP Sales at fintech companies who have never heard of us"},
-    {"expect": "ab-testing", "prompt": "we want to test two versions of the pricing page headline. how long do we run it and how do I know the winner is real?"},
-    {"expect": "pricing", "prompt": "should we move from a flat $29/month plan to usage-based pricing for our API product?"},
-    {"expect": "pptx", "prompt": "turn these quarterly numbers into a 10-slide PowerPoint deck for the board"},
-    {"expect": "xlsx", "prompt": "build a spreadsheet model of MRR by signup cohort with a chart on a second tab"},
-    {"expect": "code-review", "prompt": "look over the diff on this branch for bugs before I open a PR"},
-    {"expect": "last30days", "prompt": "what have people been saying on Hacker News and Reddit about Cursor vs Claude Code lately?"},
-    {"expect": "eli5", "prompt": "explain how DNS works like I'm five, with pictures"},
-    {"expect": "firecrawl-scrape", "prompt": "grab the text of https://stripe.com/pricing as clean markdown"},
-    {"expect": "cto", "prompt": "am I ready to launch this project? run a launch readiness check and tell me what a CTO would flag"}
+    {
+      "expect": "cold-email",
+      "prompt": "draft a 3-step outreach sequence to VP Sales at fintech companies who have never heard of us"
+    },
+    {
+      "expect": "ab-testing",
+      "prompt": "we want to test two versions of the pricing page headline. how long do we run it and how do I know the winner is real?"
+    },
+    {
+      "expect": "pricing",
+      "prompt": "should we move from a flat $29/month plan to usage-based pricing for our API product?"
+    },
+    {
+      "expect": "pptx",
+      "prompt": "turn these quarterly numbers into a 10-slide PowerPoint deck for the board"
+    },
+    {
+      "expect": "xlsx",
+      "prompt": "build a spreadsheet model of MRR by signup cohort with a chart on a second tab"
+    },
+    {
+      "expect": "code-review",
+      "prompt": "look over the diff on this branch for bugs before I open a PR"
+    },
+    {
+      "expect": "last30days",
+      "prompt": "what have people been saying on Hacker News and Reddit about Cursor vs Claude Code lately?"
+    },
+    {
+      "expect": "eli5",
+      "prompt": "explain how DNS works like I'm five, with pictures"
+    },
+    {
+      "expect": "firecrawl-scrape",
+      "prompt": "grab the text of https://stripe.com/pricing as clean markdown"
+    },
+    {
+      "expect": "cto",
+      "prompt": "am I ready to launch this project? run a launch readiness check and tell me what a CTO would flag"
+    }
   ],
   "not_installed": [
-    {"expect": "supabase/agent-skills@supabase-postgres-best-practices", "prompt": "set up row level security policies in my Supabase Postgres database and speed up the slow queries"},
-    {"expect": "remotion-dev/skills@remotion-best-practices", "prompt": "build a programmatic video with Remotion that animates our launch stats"},
-    {"expect": "prisma/skills@prisma-database-setup", "prompt": "set up Prisma with Postgres in this Next.js app and write the first migration"},
-    {"expect": "shadcn/ui@shadcn", "prompt": "add a shadcn/ui data table with column sorting to the dashboard page"},
-    {"expect": "callstack/react-native-testing-library@react-native-testing", "prompt": "write component tests for my React Native screens using testing library"},
-    {"expect": "vercel-labs/agent-skills@vercel-react-best-practices", "prompt": "review this React component tree for performance problems following Vercel's React best practices"},
-    {"expect": "microsoft/azure-skills@azure-kubernetes", "prompt": "deploy this container to Azure Kubernetes Service with autoscaling"},
-    {"expect": "genmedia-labs/skills@ai-video-generation", "prompt": "generate a 15 second AI video ad from this product description"},
-    {"expect": "neondatabase/agent-skills@neon-postgres", "prompt": "create a Neon Postgres database branch for each preview deployment"},
-    {"expect": "google/agents-cli@google-agents-cli-adk-code", "prompt": "build an agent with Google's Agent Development Kit that answers questions over our docs"}
+    {
+      "expect": "supabase/agent-skills@supabase-postgres-best-practices",
+      "prompt": "set up row level security policies in my Supabase Postgres database and speed up the slow queries"
+    },
+    {
+      "expect": "remotion-dev/skills@remotion-best-practices",
+      "prompt": "build a programmatic video with Remotion that animates our launch stats"
+    },
+    {
+      "expect": "prisma/skills@prisma-database-setup",
+      "prompt": "set up Prisma with Postgres in this Next.js app and write the first migration"
+    },
+    {
+      "expect": "shadcn/ui@shadcn",
+      "prompt": "add a shadcn/ui data table with column sorting to the dashboard page"
+    },
+    {
+      "expect": "callstack/react-native-testing-library@react-native-testing",
+      "prompt": "write component tests for my React Native screens using testing library"
+    },
+    {
+      "expect": "vercel-labs/agent-skills@vercel-react-best-practices",
+      "prompt": "review this React component tree for performance problems following Vercel's React best practices"
+    },
+    {
+      "expect": "microsoft/azure-skills@azure-kubernetes",
+      "prompt": "deploy this container to Azure Kubernetes Service with autoscaling"
+    },
+    {
+      "expect": "genmedia-labs/skills@ai-video-generation",
+      "prompt": "generate a 15 second AI video ad from this product description"
+    },
+    {
+      "expect": "neondatabase/agent-skills@neon-postgres",
+      "prompt": "create a Neon Postgres database branch for each preview deployment"
+    },
+    {
+      "expect": "google/agents-cli@google-agents-cli-adk-code",
+      "prompt": "build an agent with Google's Agent Development Kit that answers questions over our docs"
+    }
   ],
   "bonus_ambiguous_checks": [
-    {"expect": null, "prompt": "Lets run a eval of this skill router by testing 10 installed skills and 10 not installed (skills.sh)"}
+    {
+      "expect": null,
+      "prompt": "Lets run a eval of this skill router by testing 10 installed skills and 10 not installed (skills.sh)"
+    }
+  ],
+  "session_goals": [
+    {
+      "expect": "cold-email",
+      "goal": "write outreach emails to fintech VPs who have never heard of us"
+    },
+    {
+      "expect": "ab-testing",
+      "goal": "design and run an experiment on the pricing page headline"
+    },
+    {
+      "expect": "pricing",
+      "goal": "rethink our pricing model, flat plan versus usage-based"
+    },
+    {
+      "expect": "pptx",
+      "goal": "produce the board deck for the quarter as a PowerPoint file"
+    },
+    {
+      "expect": "xlsx",
+      "goal": "build a cohort revenue model in a spreadsheet"
+    },
+    {
+      "expect": "code-review",
+      "goal": "get this branch reviewed for bugs before opening the PR"
+    },
+    {
+      "expect": "last30days",
+      "goal": "find out what people online have been saying about Cursor versus Claude Code recently"
+    },
+    {
+      "expect": "eli5",
+      "goal": "explain how DNS works to my kid with pictures"
+    },
+    {
+      "expect": "firecrawl-scrape",
+      "goal": "pull a few competitor pricing pages into clean markdown"
+    },
+    {
+      "expect": "cto",
+      "goal": "figure out whether this project is ready to launch"
+    }
+  ],
+  "session_goals_not_installed": [
+    {
+      "expect_outcome": "B",
+      "goal": "set up row level security in our Supabase Postgres database"
+    },
+    {
+      "expect_outcome": "B",
+      "goal": "build a programmatic launch video with Remotion"
+    },
+    {
+      "expect_outcome": "B",
+      "goal": "deploy our container to Azure Kubernetes Service with autoscaling"
+    },
+    {
+      "expect_outcome": "B",
+      "goal": "build an agent with Google's Agent Development Kit"
+    },
+    {
+      "expect_outcome": "B",
+      "goal": "add Prisma with Postgres to this Next.js app"
+    }
+  ],
+  "session_goals_no_skill": [
+    {
+      "expect_outcome": "C",
+      "goal": "rename a few variables and fix typos in comments"
+    },
+    {
+      "expect_outcome": "C",
+      "goal": "answer a couple of quick Python syntax questions"
+    },
+    {
+      "expect_outcome": "C",
+      "goal": "chat about what to build next"
+    }
   ]
 }

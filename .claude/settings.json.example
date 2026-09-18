@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run --project . skill-router session-start",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}
