@@ -91,13 +91,33 @@ def parse_frontmatter(text: str) -> dict[str, str]:
     return out
 
 
-def _first_paragraph(text: str) -> str:
-    body = _FRONTMATTER.sub("", text, count=1).strip()
+SHORT_DESCRIPTION_CHARS = 60
+BODY_EXCERPT_CHARS = 320
+_HTML_COMMENT = re.compile(r"<!--.*?-->", re.S)
+_CODE_BLOCK = re.compile(r"```.*?```", re.S)
+
+
+def _body_excerpt(text: str, limit: int = BODY_EXCERPT_CHARS) -> str:
+    """First real prose after the front matter: skips headings, comments, code, and bash preambles.
+
+    Many skills (the gstack suite, for one) keep a five-word front-matter description and put the
+    real "when to use this" paragraph in the body. Jev can only match on what we send it.
+    """
+    body = _FRONTMATTER.sub("", text, count=1)
+    body = _CODE_BLOCK.sub("", _HTML_COMMENT.sub("", body))
+    out: list[str] = []
     for para in re.split(r"\n\s*\n", body):
         p = " ".join(para.split())
-        if p and not p.startswith("#"):
-            return p[:300]
-    return ""
+        if not p or p.startswith(("#", "```", "$", "_", "[", "|")):
+            continue
+        out.append(p)
+        if sum(len(x) for x in out) >= limit:
+            break
+    return " ".join(out)[:limit].rstrip()
+
+
+def _first_paragraph(text: str) -> str:
+    return _body_excerpt(text, 300)
 
 
 def _load_settings() -> dict:
@@ -114,7 +134,11 @@ def _skill_from_file(path: Path, scope: str) -> SkillInfo | None:
         return None
     fm = parse_frontmatter(text)
     name = fm.get("name") or path.parent.name
-    desc = fm.get("description") or _first_paragraph(text)
+    desc = fm.get("description") or ""
+    if len(desc) < SHORT_DESCRIPTION_CHARS:
+        excerpt = _body_excerpt(text)
+        if excerpt:
+            desc = f"{desc} {excerpt}".strip()
     return SkillInfo(name=name, description=desc, scope=scope, path=str(path))
 
 
