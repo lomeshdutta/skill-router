@@ -19,6 +19,8 @@ from skill_router.context import build_state
 from skill_router.router import OUTCOME_INSTALLED, OUTCOME_NONE, OUTCOME_SEARCH, Recommendation, route, use_mock
 
 HOOK_TIMEOUT_SECONDS = 20
+FIND_SKILLS_NAME = "find-skills"
+FIND_SKILLS_INSTALL = "npx skills add vercel-labs/skills --skill find-skills -g"
 SESSION_START_TIMEOUT_SECONDS = 10
 
 SESSION_START_INSTRUCTION = (
@@ -61,10 +63,18 @@ def format_intent(rec: Recommendation, skills: list[catalog.SkillInfo], goal: st
         return "\n".join(lines)
     if rec.outcome == OUTCOME_SEARCH:
         best = f"{rec.skill} {rec.skill_probability:.2f}" if rec.skill else f"best {rec.best_local_probability:.2f}"
-        return (
-            f"{head}\nNo installed skill fits this goal ({best}). Use the find-skills skill to search "
-            f"skills.sh for: {goal}\nPresent what it finds; do not install anything without the user's explicit yes."
-        )
+        lines = [head, f"No installed skill fits this goal ({best})."]
+        if FIND_SKILLS_NAME in by_name:
+            lines.append(f"Use the find-skills skill to search skills.sh for: {goal}")
+        else:
+            lines.append(
+                "The find-skills skill is not installed, so skills.sh cannot be searched with a quality filter. "
+                "Tell the user this, and offer the install command (run it only if they say yes):"
+            )
+            lines.append(f"  {FIND_SKILLS_INSTALL}")
+            lines.append(f'Until then, `skill-router search "{goal}"` gives a raw, unfiltered list.')
+        lines.append("Present what it finds; do not install anything without the user's explicit yes.")
+        return "\n".join(lines)
     return f"{head}\nGeneral assistance is fine for this goal; no skill needed."
 
 

@@ -2,102 +2,126 @@
 
 [![ci](https://github.com/lomeshdutta/skill-router/actions/workflows/ci.yml/badge.svg)](https://github.com/lomeshdutta/skill-router/actions/workflows/ci.yml)
 
-Tell Claude Code which of your installed skills a session needs. One question at the start, one fast decision, then silence.
+A small command-line tool for [Claude Code](https://claude.com/claude-code) that picks the right skill for your session.
 
-**Problem.** Claude Code skills pile up (this machine has 131 across project, user, plugin, app and built-in scopes). A skill that is installed but never invoked is a cost with no return, and Claude does not reliably notice on its own when one applies.
+## The problem
 
-**Approach.** Ask [Jev](https://typesafe.ai), TypeSafe AI's decision model, to rank every installed skill against a one-sentence session goal. Jev is not a chat model: you send it typed questions and it returns a probability for every option plus a confidence, in about 350 ms, for roughly $0.0004 per call. That is cheap and fast enough to run at the start of every session, and the numbers let the tool threshold on evidence instead of parsing prose.
+Claude Code lets you install *skills*: folders of instructions that teach it a specific job, such as writing cold emails, auditing a page for SEO, reviewing a diff, or building a PowerPoint deck. They come from the [skills.sh](https://skills.sh) directory, from plugins, and from Claude Code itself.
+
+Once you have more than a dozen, two things go wrong:
+
+1. You forget which ones you have, so you do the work without the skill that would have helped.
+2. Claude does not reliably notice on its own that a skill applies to what you asked.
+
+skill-router fixes that by checking your installed skills against what you are trying to do, once, at the start of each session.
+
+## How it works
+
+1. You start a Claude Code session in a project where skill-router is set up.
+2. If your first message makes the goal clear, Claude works it out. If not, Claude asks one question: *"What are you trying to get done this session?"*
+3. Claude runs `skill-router intent set "<your goal>"`.
+4. The tool lists every skill installed on your machine and asks [Jev](https://typesafe.ai), a decision model from TypeSafe AI, to rank them against your goal. Jev is not a chat model. It returns a probability for each skill plus a confidence score, in under half a second, for a fraction of a cent.
+5. You get one of three answers:
+   - **Load this skill.** For example: `/cold-email (probability 1.00)`.
+   - **Nothing you have installed fits.** Claude is told to search skills.sh for you using the [find-skills](https://skills.sh/vercel-labs/skills/find-skills) skill.
+   - **No skill needed.** Plain help is fine for this.
+6. After that, nothing runs for the rest of the session. If you change tasks, type `/intent <new goal>`.
+
+A real example from the author's machine:
 
 ```
-session starts ─► hook tells Claude: infer the goal from the first message, or ask ONE question
-              ─► Claude runs:  skill-router intent set "write outreach emails to fintech VPs"
-              ─► Jev ranks all installed skills in one call
-              ─► one of three answers, then nothing more this session:
-                   A  Relevant installed skills: /cold-email (1.00). Load it when the work starts.
-                   B  No installed skill fits. Use the find-skills skill to search skills.sh.
-                   C  General assistance is fine; no skill needed.
-pivot?        ─► you type  /intent <new goal>
+$ skill-router intent set "write the cold outreach sequence for our fintech prospects"
+[skill-router] Session goal: write the cold outreach sequence for our fintech prospects
+Jev: task kind `marketing_growth`, needs-a-skill 0.84.
+Relevant installed skills for this session:
+  /cold-email (probability 1.00) — Write B2B cold emails and follow-up sequences that get replies
+Load /cold-email with the Skill tool when the work starts. Do not install anything.
 ```
 
 ## Install
 
+You need Python 3.12, [uv](https://docs.astral.sh/uv/), and a TypeSafe API key from [console.typesafe.ai](https://console.typesafe.ai).
+
 ```bash
-git clone https://github.com/lomeshdutta/skill-router && cd skill-router
+git clone https://github.com/lomeshdutta/skill-router
+cd skill-router
 uv sync
-cp .env.example .env            # paste your TypeSafe key (console.typesafe.ai)
-uv run skill-router install-hook --write      # registers the SessionStart hook for this project
+cp .env.example .env         # open .env and paste your TypeSafe key
 ```
 
-For every project, write the hook into your user settings instead:
+Then register the hook that runs at session start. For one project, run this inside that project's folder:
+
+```bash
+uv run --project /path/to/skill-router skill-router install-hook --write
+```
+
+For every project, write it into your user-level settings instead:
 
 ```bash
 uv run skill-router install-hook --settings ~/.claude/settings.json --write
 ```
 
-Optional but recommended for outcome B: install the [find-skills](https://skills.sh/vercel-labs/skills/find-skills) skill so Claude can search skills.sh with a quality filter:
+Recommended: install find-skills so the "nothing installed fits" answer leads somewhere. If it is missing, skill-router says so at that point and shows this command instead of searching:
 
 ```bash
 npx skills add vercel-labs/skills --skill find-skills -g
 ```
 
-No key? Everything runs in a labelled **mock mode** (keyword overlap), including the tests and the eval.
+Start a new Claude Code session and you are done. Without an API key, everything still runs in a **mock mode** that matches keywords instead of asking Jev. Its output is labelled `mock`, and the tests use it, so you can try the tool before signing up for anything.
 
 ## Commands
 
 | Command | What it does |
 | --- | --- |
-| `skill-router intent set "<goal>"` | Route a session goal; prints outcome A, B or C and records it for the session |
-| `skill-router intent show` / `clear` | Inspect or reset the recorded goal |
-| `skill-router session-start` | The SessionStart hook (reads Claude Code's JSON on stdin) |
-| `skill-router catalog` | List the installed skills Jev chooses from |
-| `skill-router search <query>` | Search skills.sh via `npx skills find` |
-| `skill-router log` | Recent decisions from `~/.cache/skill-router/decisions.jsonl` |
-| `skill-router suggest "<prompt>"` / `hook` | Legacy per-prompt routing, opt-in (see below) |
+| `skill-router intent set "<goal>"` | Rank installed skills against a goal and record the answer for this session |
+| `skill-router intent show` / `clear` | Look at or forget the recorded goal |
+| `skill-router catalog` | List the skills it can see on your machine |
+| `skill-router search <query>` | Search skills.sh from the command line |
+| `skill-router log` | Recent decisions, from `~/.cache/skill-router/decisions.jsonl` |
+| `skill-router install-hook` | Print or write the Claude Code hook configuration |
+| `skill-router suggest "<prompt>"` | Rank skills for a single prompt instead of a session goal |
 
-Switches: `SKILL_ROUTER_MOCK=1` force mock mode, `SKILL_ROUTER_DISABLE=1` silence the hooks, `SKILL_ROUTER_APP_SKILLS_DIR` override where the desktop app's bundled skills live (macOS default is detected).
+Environment switches: `SKILL_ROUTER_MOCK=1` forces mock mode, `SKILL_ROUTER_DISABLE=1` silences the hook, `SKILL_ROUTER_APP_SKILLS_DIR` points at the Claude desktop app's bundled skills if they are somewhere unusual (the macOS location is detected automatically).
 
-## How well does it work
+## Where it looks for skills
 
-`uv run python evals/run_eval.py` runs the cases in `evals/cases.json` against real Jev and writes `evals/reports/<date>.md` ([latest report](evals/reports/2026-09-17.md)). Maintainers can also trigger the **eval (real Jev)** workflow from the Actions tab; it needs a `TYPESAFE_API_KEY` repository secret and attaches the report to the run. On 2026-09-17, with 131 installed skills, none of the prompts naming the expected skill:
-
-| Slice | Result |
+| Scope | Location |
 | --- | --- |
-| Session goals whose skill is installed: top-1 with outcome A | 9/10 |
-| Session goals whose skill is only on skills.sh: outcome B | 4/5 |
-| Session goals needing no skill: outcome C | 3/4 |
-| Single prompts (legacy per-prompt mode): top-1 | 10/10 |
+| Project | `<your project>/.claude/skills/*/SKILL.md` |
+| User | `~/.claude/skills/*/SKILL.md` |
+| Plugins | enabled plugins under `~/.claude/plugins/cache/` |
+| Desktop app | skills bundled with the Claude desktop app (pptx, docx, xlsx, pdf, ...), macOS only so far |
+| Built in | skills compiled into Claude Code (code-review, simplify, ...). These have no file on disk, so they are listed by hand in `src/skill_router/catalog.py` |
 
-The one installed-goal miss was `firecrawl-scrape` picked at 0.81 but gated to "no skill" by a low needs-a-skill probability; a threshold question, tracked in `STATE.md`. The one outcome-B miss was a Remotion goal routed to an installed marketing `video` skill whose description explicitly lists Remotion, which is correct by that skill's own claim. The outcome-C miss is a "publish this repo" goal that Jev routed to a skills.sh search; kept in the eval as a known miss rather than tuned away.
+Skills you have switched off in Claude Code's settings are excluded.
 
-Every question Jev is asked and every threshold lives in [`src/skill_router/questions.py`](src/skill_router/questions.py). The decision log is the tuning set.
+## Does it pick the right skill?
 
-## What this is not
+`uv run python evals/run_eval.py` runs the cases in `evals/cases.json` against Jev and writes a report to `evals/reports/`. None of the test prompts name the skill they expect. Results from the [latest report](evals/reports/2026-09-17.md), on a machine with about 130 installed skills:
 
-- **Not per-prompt.** Version 0.1 ran on every prompt. It scored 10/10 on the eval and was still noise in practice: once a session was *about* skills it suggested `skill-creator` on four prompts in a row. The per-prompt hook survives as an opt-in: `skill-router install-hook --event UserPromptSubmit --write`.
-- **Not an installer.** It prints `npx skills add ...` commands and tells Claude to ask you; it never installs anything.
-- **Not a search engine with a thumb on the scale.** When nothing installed fits, it hands off to find-skills without pre-seeding candidates, so that skill's own quality filter (install counts, source reputation) does the work.
-- **Not a service.** The catalog is what is on your disk. No server, no telemetry beyond what `npx skills` itself sends (set `DISABLE_TELEMETRY=1` to stop that too).
+| Test | Result |
+| --- | --- |
+| Session goal, the right skill is installed: picked it | 9 of 10 |
+| Session goal, the right skill is only on skills.sh: said so | 4 of 5 |
+| Session goal, no skill would help: stayed quiet | 3 of 4 |
+| Single prompt, the right skill is installed: picked it | 10 of 10 |
 
-See [`SPEC.md`](SPEC.md) for the full cut list with reasons.
+The misses are kept in the report and explained there rather than tuned away. Every question Jev is asked, and every threshold, lives in one file: [`src/skill_router/questions.py`](src/skill_router/questions.py).
 
-## Why Jev rather than an LLM call
+## Why a decision model instead of asking an LLM
 
-An LLM classifier would need a prompt, produce text, and require parsing; its "confidence" would be whatever it wrote. Jev returns a calibrated probability for each of up to 255 options in a single parallel evaluation, never produces a malformed answer, and costs two orders of magnitude less. A probe on this catalog confirmed it is matching meaning, not words: a prompt stuffed with a skill's trigger words about an unrelated topic scored 0.00; a paraphrase sharing no words with the description scored 0.92. Details in `evals/reports/`.
+Asking a chat model "which of these 130 skills fits?" means writing a prompt, getting text back, parsing it, and trusting whatever confidence it chose to write. Jev takes a list of options and returns a calibrated probability for each one in a single evaluation. It cannot produce a malformed answer, it reports when it is unsure, and it costs about two orders of magnitude less. A quick probe confirmed it matches meaning rather than words: a prompt full of a skill's trigger words about an unrelated topic scored 0.00, while a paraphrase sharing no words with the skill's description scored 0.92.
 
-## Layout
+## What it deliberately does not do
 
-```
-src/skill_router/
-  questions.py   every Jev question and threshold (start here)
-  catalog.py     finds installed skills across five scopes; built-ins listed by hand
-  context.py     builds the state Jev evaluates
-  router.py      the Jev call, the mock, and the A/B/C outcome logic
-  session.py     per-session goal file
-  cli.py         all commands, including the two hooks
-  skills_sh.py   `npx skills find` wrapper with a cache
-  hook.py        legacy per-prompt hook
-evals/           cases.json, run_eval.py, reports/
-tests/           pytest, runs without a key
-```
+- **Run on every prompt.** The first version did. It was accurate on tests and irritating in practice, because once a session was *about* skills it kept suggesting the skill-authoring skill. Per-prompt mode still exists as an opt-in: `skill-router install-hook --event UserPromptSubmit --write`.
+- **Install anything.** It prints install commands and tells Claude to ask you first.
+- **Bias the skills.sh search.** When nothing installed fits, it hands off to find-skills without suggesting candidates, so that skill's own quality filter does the work.
+- **Phone home.** No server, no telemetry of its own. Your goal text and directory name go to TypeSafe's API; the search string goes to skills.sh via `npx skills`.
+- **Support other agents yet.** The hook contract and skill locations are Claude Code's. Other agents are a possible later step, not a silent promise.
 
-Contributing: [`CONTRIBUTING.md`](CONTRIBUTING.md). Security and key handling: [`SECURITY.md`](SECURITY.md). License: MIT.
+The full list with reasons is in [`SPEC.md`](SPEC.md).
+
+## Contributing and security
+
+See [`CONTRIBUTING.md`](CONTRIBUTING.md) for setup and how to add a test case, and [`SECURITY.md`](SECURITY.md) for what the tool sends where and how to report a problem. Licensed under MIT.

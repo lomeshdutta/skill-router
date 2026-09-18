@@ -216,3 +216,29 @@ def test_session_start_hook_shapes(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(_sys, "stdin", io.StringIO(json.dumps({"session_id": "r1", "source": "resume"})))
     assert cli.main(["session-start"]) == 0
     assert "Session goal on record" in capsys.readouterr().out
+
+
+def test_outcome_b_surfaces_missing_find_skills():
+    from skill_router import cli
+    from skill_router.router import Recommendation
+
+    base = dict(
+        source="mock",
+        model="m",
+        latency_ms=1,
+        task_kind="project_setup",
+        task_kind_confidence=1.0,
+        topic="databases",
+        topic_confidence=0.9,
+        needs_skill=0.9,
+        skill=None,
+        skill_confidence=0.9,
+        skill_probabilities={"none": 0.95},
+    )
+    rec = Recommendation(**base)
+    without = cli.format_intent(rec, SKILLS, "set up Supabase RLS")
+    assert "find-skills skill is not installed" in without and cli.FIND_SKILLS_INSTALL in without
+    with_it = cli.format_intent(
+        rec, [*SKILLS, SkillInfo("find-skills", "Discover skills", "user", "x")], "set up Supabase RLS"
+    )
+    assert "Use the find-skills skill" in with_it and "not installed" not in with_it
