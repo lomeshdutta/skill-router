@@ -8,12 +8,13 @@ A small command-line tool for [Claude Code](https://claude.com/claude-code) that
 
 Claude Code lets you install *skills*: folders of instructions that teach it a specific job, such as writing cold emails, auditing a page for SEO, reviewing a diff, or building a PowerPoint deck. They come from the [skills.sh](https://skills.sh) directory, from plugins, and from Claude Code itself.
 
-Once you have more than a dozen, two things go wrong:
+Once you have more than a dozen, three things go wrong:
 
 1. You forget which ones you have, so you do the work without the skill that would have helped.
 2. Claude does not reliably notice on its own that a skill applies to what you asked.
+3. The skill you need may not be installed at all. skills.sh has thousands, and nothing tells you that a well-tested one exists for exactly the job you just started.
 
-skill-router fixes that by checking your installed skills against what you are trying to do, once, at the start of each session.
+skill-router answers all three at the start of each session: it checks what you are trying to do against every skill you have installed, tells you which one to load, and when none fits, sends Claude to search skills.sh for one.
 
 ## How it works
 
