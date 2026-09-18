@@ -84,8 +84,8 @@ def main() -> None:
     lines += ["", f"**False local suggestions: {fp}/10 · Search fired: {fired}/10 · Target found via topic query: {hit_topic}/10 · via prompt query: {hit_prompt}/10 · via tech query (now used by the hook): {hit_tech}/10**", ""]
 
     # ------------------------------------------------------------------- bonus
-    lines += ["## Bonus: known false positive", ""]
-    for c in CASES["bonus_false_positive_checks"]:
+    lines += ["## Bonus: ambiguous case (Jev picked skill-creator; on inspection its description covers "run evals to test a skill", so this is arguably correct)", ""]
+    for c in CASES["bonus_ambiguous_checks"]:
         rec = route(build_state(c["prompt"], cwd=CWD), skills)
         lines.append(f"- `{c['prompt'][:70]}…` → {rec.skill or 'none'} p={rec.skill_probability:.2f} needs={rec.needs_skill:.2f} spoke={'yes' if rec.should_suggest else 'no'}")
 

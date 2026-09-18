@@ -23,7 +23,7 @@
     {"expect": "neondatabase/agent-skills@neon-postgres", "prompt": "create a Neon Postgres database branch for each preview deployment"},
     {"expect": "google/agents-cli@google-agents-cli-adk-code", "prompt": "build an agent with Google's Agent Development Kit that answers questions over our docs"}
   ],
-  "bonus_false_positive_checks": [
+  "bonus_ambiguous_checks": [
     {"expect": null, "prompt": "Lets run a eval of this skill router by testing 10 installed skills and 10 not installed (skills.sh)"}
   ]
 }
