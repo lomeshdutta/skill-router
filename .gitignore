@@ -14,3 +14,12 @@ wheels/
 .venv/
 __pycache__/
 .pytest_cache/
+
+# merged from loop-factory template-gitignore
+*.pyc
+.DS_Store
+.claude/settings.json
+loop-board.html
+portfolio.html
+*.board.html
+REVIEW-LOG-*.md

@@ -1,0 +1,129 @@
+#!/usr/bin/env python3
+"""loop-factory doctrine v0.4.1 — commit gate: secret wall (blocks) + trailer nudge (warns).
+
+Two independent checks, installed as githooks/commit-msg via
+`git config core.hooksPath githooks`:
+
+1. Secret scan — BLOCKS the commit (exit 1) when a known credential pattern
+   appears in staged content, or a real `.env` file is staged. Secrets are a
+   hard boundary, not a teaching moment. Escape hatch for a false positive:
+   `git commit --no-verify`. The offending value is never printed.
+2. Decision-shadow trailers — WARNS only (exit 0). Friction teaches; walls get
+   climbed. Docs-only commits are exempt.
+"""
+
+from __future__ import annotations
+
+import re
+import subprocess
+import sys
+from pathlib import Path
+
+# The patterns live in a data-only module beside this hook, shared with `scripts/audit` so the
+# wall and the sweep cannot drift apart. Loading it is the FIRST thing this hook does, and a
+# failure here BLOCKS the commit: a secret wall that cannot load its patterns must not wave
+# work through, it must stop and say so.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+try:
+    from secret_patterns import ENV_ALLOW, PLACEHOLDER_MARKERS, SECRET_PATTERNS
+except ImportError:
+    print("commit-msg: cannot load githooks/secret_patterns.py — the secret wall has no "
+          "patterns and will not pretend this commit was checked. Restore that file from the "
+          "loop-factory skill, or use --no-verify deliberately.", file=sys.stderr)
+    raise SystemExit(1)
+
+
+TRAILER_KEYS = ("Decision", "Constraints", "Rejected", "Evidence", "Rollback")
+
+
+def _run(args: list[str]) -> str:
+    completed = subprocess.run(
+        args, text=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, check=False
+    )
+    return "" if completed.returncode else completed.stdout
+
+
+def staged_files() -> list[str]:
+    out = _run(["git", "diff", "--cached", "--name-only", "--diff-filter=ACMR"])
+    return [line.strip() for line in out.splitlines() if line.strip()]
+
+
+def added_lines() -> list[tuple[str, str]]:
+    """(path:lineno, added-line-text) for every '+' line in the staged diff."""
+    out = _run(["git", "diff", "--cached", "-U0", "--diff-filter=ACMR"])
+    results: list[tuple[str, str]] = []
+    path = "?"
+    lineno = 0
+    for raw in out.splitlines():
+        if raw.startswith("+++ b/"):
+            path = raw[6:]
+        elif raw.startswith("@@"):
+            match = re.search(r"\+(\d+)", raw)
+            lineno = int(match.group(1)) if match else 0
+        elif raw.startswith("+") and not raw.startswith("+++"):
+            results.append((f"{path}:{lineno}", raw[1:]))
+            lineno += 1
+    return results
+
+
+def scan_secrets(files: list[str]) -> list[str]:
+    hits: list[str] = []
+    for path in files:
+        name = Path(path).name
+        if name == ".env" or (name.startswith(".env") and name not in ENV_ALLOW):
+            hits.append(f"  {path}: staged .env file (secrets belong in a secret manager, not git)")
+    for location, text in added_lines():
+        upper = text.upper()
+        if any(marker in upper for marker in PLACEHOLDER_MARKERS):
+            continue
+        for label, pattern in SECRET_PATTERNS:
+            if pattern.search(text):
+                hits.append(f"  {location}: looks like a {label}")
+                break
+    return hits
+
+
+def is_doc_path(path: str) -> bool:
+    if path.startswith(("docs/", "goals/", "research/", "notes/")):
+        return True
+    return Path(path).suffix.lower() in {".md", ".txt", ".rst"}
+
+
+def trailers(message: str) -> dict[str, str]:
+    found: dict[str, str] = {}
+    for raw_line in message.splitlines():
+        if ":" not in raw_line or raw_line.startswith((" ", "\t")):
+            continue
+        key, value = raw_line.split(":", 1)
+        for required in TRAILER_KEYS:
+            if key.strip().lower() == required.lower():
+                found[required] = value.strip()
+    return found
+
+
+def main() -> int:
+    files = staged_files()
+
+    # 1. Secret wall — blocking.
+    secret_hits = scan_secrets(files)
+    if secret_hits:
+        print("error: possible secret in staged changes — commit blocked:", file=sys.stderr)
+        for hit in secret_hits:
+            print(hit, file=sys.stderr)
+        print("", file=sys.stderr)
+        print("Revoke the credential if it was real, remove it from the staged content, and use", file=sys.stderr)
+        print("a secret manager or an untracked .env. False positive? `git commit --no-verify`.", file=sys.stderr)
+        return 1
+
+    # 2. Trailer nudge — warn-only.
+    if not (files and all(is_doc_path(path) for path in files)):
+        message = Path(sys.argv[1]).read_text(encoding="utf-8", errors="replace")
+        missing = [key for key in TRAILER_KEYS if not trailers(message).get(key)]
+        if missing:
+            print("warning: missing decision-shadow trailers: " + ", ".join(missing), file=sys.stderr)
+            print("warning: commit allowed; add the trailers manually (see MASTERLOOP.md or CLAUDE.md).", file=sys.stderr)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

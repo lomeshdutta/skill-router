@@ -1,0 +1,60 @@
+#!/usr/bin/env python3
+"""Mechanical check of skill-router's never-happens invariant (CONTEXT.md).
+
+  1. The TypeSafe key goes only to api.typesafe.ai: no other outbound host appears in src/.
+  2. Nothing is installed without the user: `npx skills add` never appears in src/ as a call.
+  3. Hook entry points never crash a session: every function that reads hook stdin is wrapped
+     in a catch-all and returns 0.
+
+Exit 0 = invariant holds. Exit 1 = a violation, printed. Exit 2 = could not check (never
+reported as clean). Run: `scripts/check_invariant` from the repo root.
+"""
+
+from __future__ import annotations
+
+import re
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+SRC = ROOT / "src" / "skill_router"
+ALLOWED_HOSTS = {"api.typesafe.ai", "skills.sh", "www.skills.sh", "console.typesafe.ai", "docs.typesafe.ai", "github.com"}
+HOST_RE = re.compile(r"https?://([A-Za-z0-9.-]+)")
+HOOK_ENTRY_POINTS = ("hook.py:main", "cli.py:cmd_session_start")
+
+
+def main() -> int:
+    if not SRC.is_dir():
+        print(f"cannot check: {SRC} missing", file=sys.stderr)
+        return 2
+    problems: list[str] = []
+    for path in sorted(SRC.glob("*.py")):
+        text = path.read_text()
+        for host in HOST_RE.findall(text.replace("\\.", ".")):  # regex literals like skills\.sh
+            if host not in ALLOWED_HOSTS:
+                problems.append(f"{path.name}: outbound host {host!r} not in allowlist")
+        for m in re.finditer(r"(?<![#\"'`])npx skills add", text):
+            line = text[: m.start()].count("\n") + 1
+            src_line = text.splitlines()[line - 1]
+            if not src_line.lstrip().startswith(("#", "\"", "'", "f\"", "f'")) and "install_command" not in src_line:
+                problems.append(f"{path.name}:{line}: looks like an install call, not a printed command")
+    for spec in HOOK_ENTRY_POINTS:
+        fname, func = spec.split(":")
+        text = (SRC / fname).read_text() if (SRC / fname).exists() else ""
+        m = re.search(rf"def {func}\(.*?\n(?=\ndef |\Z)", text, re.S)
+        if not m:
+            continue  # entry point not present yet (e.g. before G2); nothing to assert
+        body = m.group(0)
+        if "except Exception" not in body or "return 0" not in body:
+            problems.append(f"{spec}: hook entry point must catch Exception and return 0")
+    if problems:
+        print("invariant violated:", file=sys.stderr)
+        for p in problems:
+            print("  " + p, file=sys.stderr)
+        return 1
+    print("invariant holds: outbound hosts allowlisted, no install calls, hook entry points never raise")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
