@@ -128,3 +128,27 @@ def test_build_query_prefers_tech_terms():
     q2 = skills_sh.build_query("build an agent with Google's Agent Development Kit that answers questions over our docs", "agent-workflows", "build_feature")
     assert "google" in q2 and "agent" in q2
     assert skills_sh.build_query("help me think through this idea", "productivity", "planning_strategy") == "productivity planning strategy"
+
+
+def test_uncovered_tech_terms_fires_only_when_specific_tech_named():
+    from skill_router.router import Recommendation
+    base = dict(source="jev", model="m", latency_ms=1, task_kind="build_feature", task_kind_confidence=1.0,
+                topic="video-media", topic_confidence=0.9, needs_skill=0.7)
+    video_desc = "Plan and script marketing videos for YouTube, ads, and product demos"
+    rec = Recommendation(skill="video", skill_confidence=0.98, skill_probabilities={"video": 0.98}, names_specific_tech=0.9, **base)
+    assert rec.uncovered_tech_terms("build a programmatic video with Remotion that animates our stats", video_desc) == ["remotion"]
+    generic = Recommendation(skill="xlsx", skill_confidence=0.97, skill_probabilities={"xlsx": 0.97}, names_specific_tech=0.1, **base)
+    assert generic.uncovered_tech_terms("build a spreadsheet of MRR by cohort", "Create Excel spreadsheets") == []
+
+
+def test_extract_tech_terms_skips_urls():
+    assert skills_sh.extract_tech_terms("grab the text of https://stripe.com/pricing as clean markdown") == []
+    assert "next.js" in skills_sh.extract_tech_terms("set up Prisma in this next.js app")
+
+
+def test_uncovered_tech_terms_skips_research_about_a_product():
+    from skill_router.router import Recommendation
+    rec = Recommendation(source="jev", model="m", latency_ms=1, task_kind="research", task_kind_confidence=1.0,
+                         topic="research", topic_confidence=0.9, needs_skill=0.6, skill="last30days",
+                         skill_confidence=0.99, skill_probabilities={"last30days": 0.99}, names_specific_tech=0.9)
+    assert rec.uncovered_tech_terms("what are people saying about Cursor vs Claude Code", "Research what people say about any topic") == []

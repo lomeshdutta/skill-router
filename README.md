@@ -81,8 +81,15 @@ tests/           offline tests (mock mode)
 | --- | --- |
 | Installed skills, top-1 | 10/10 |
 | Installed skills, hook spoke with the right skill | 10/10 |
-| Not installed, no false local suggestion | 7/10 (misses: two Remotion/AI-video prompts matched the marketing `video` skill; a React perf prompt matched `code-review`) |
-| Not installed, target found on skills.sh | 9/10 with the tech-term query, up from 1/10 with the old topic query |
+| Installed skills, unwanted extra skills.sh search | 0/10 |
+| Not installed, skills.sh search fired | 8/10 |
+| Not installed, target found on skills.sh | 9/10 with the tech-term query, up from 1/10 with a topic-only query |
+
+The two not-installed cases where no search fires are Remotion and AI-video prompts: the installed marketing `video` skill's description explicitly lists Remotion and AI video, so Jev choosing it is correct by the skill's own claim.
+
+### Two search paths
+1. **No local fit** (Jev's pick is `none` or weak): search skills.sh with technology terms pulled from the prompt plus Jev's topic.
+2. **Local fit but uncovered technology**: a skill was suggested, Jev says the prompt names a specific third-party technology, and the picked skill's description never mentions it. The hook shows the local suggestion *and* the skills.sh candidates, with a caveat. Skipped for research/planning/docs prompts where the technology is the subject, not the tool.
 
 ## Status
 

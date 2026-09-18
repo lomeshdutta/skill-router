@@ -40,7 +40,7 @@ def should_skip(prompt: str) -> str | None:
     return None
 
 
-def format_context(rec: Recommendation, remote: list[skills_sh.RemoteSkill]) -> tuple[str, str]:
+def format_context(rec: Recommendation, remote: list[skills_sh.RemoteSkill], uncovered: list[str] | None = None) -> tuple[str, str]:
     """Return (additionalContext for Claude, short systemMessage for the human)."""
     tag = "skill-router" + (" (mock, no TYPESAFE_API_KEY)" if rec.source == "mock" else "")
     lines = [f"[{tag}] Jev classified this prompt as `{rec.task_kind}` "
@@ -64,7 +64,11 @@ def format_context(rec: Recommendation, remote: list[skills_sh.RemoteSkill]) -> 
     else:
         lines.append("No installed skill clearly applies.")
     if remote:
-        lines.append(f"Nothing installed fits well, but skills.sh has candidates under topic `{rec.topic}`:")
+        if uncovered:
+            named = ", ".join(uncovered)
+            lines.append(f"Caveat: the request names {named}, which `{rec.skill}` does not cover. skills.sh has more specific candidates:")
+        else:
+            lines.append(f"Nothing installed fits well, but skills.sh has candidates under topic `{rec.topic}`:")
         for r in remote:
             lines.append(f"  - {r.package}@{r.skill} ({r.installs} installs) → `{r.install_command}`  {r.url}")
         lines.append("Mention the top one to the user as an optional install; do not install without asking.")
@@ -92,9 +96,15 @@ def run(payload: dict[str, Any], *, search_remote: bool = True) -> dict[str, Any
     skills = catalog.discover(cwd)
     rec = route(state, skills)
     remote: list[skills_sh.RemoteSkill] = []
+    uncovered: list[str] = []
     if search_remote and rec.should_search_skills_sh and rec.topic:
         remote = skills_sh.find(skills_sh.build_query(prompt, rec.topic, rec.task_kind), limit=3)
-    context, human = format_context(rec, remote)
+    elif search_remote and rec.should_suggest:
+        chosen = next((s.description for s in skills if s.name == rec.skill), "")
+        uncovered = rec.uncovered_tech_terms(prompt, chosen)
+        if uncovered:
+            remote = skills_sh.find(skills_sh.build_query(prompt, rec.topic, rec.task_kind), limit=3)
+    context, human = format_context(rec, remote, uncovered)
     _log({
         "ts": time.time(),
         "session_id": payload.get("session_id"),
@@ -104,6 +114,7 @@ def run(payload: dict[str, Any], *, search_remote: bool = True) -> dict[str, Any
         "n_skills": len(skills),
         "recommendation": rec.to_dict(),
         "remote": [r.to_dict() for r in remote],
+        "uncovered_tech_terms": uncovered,
     })
     out: dict[str, Any] = {
         "hookSpecificOutput": {"hookEventName": "UserPromptSubmit", "additionalContext": context},

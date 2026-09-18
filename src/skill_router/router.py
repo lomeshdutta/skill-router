@@ -63,6 +63,7 @@ class Recommendation:
     skill_probabilities: dict[str, float]  # top few, descending
     topic: str | None
     topic_confidence: float
+    names_specific_tech: float = 0.0
     usage: dict[str, int | None] = field(default_factory=dict)
 
     @property
@@ -93,6 +94,22 @@ class Recommendation:
             and self.topic not in (None, Q.NONE_OPTION)
         )
 
+    def uncovered_tech_terms(self, prompt: str, chosen_description: str) -> list[str]:
+        """Tech terms in the prompt that the suggested skill's name/description never mention.
+
+        Non-empty means: we did pick a local skill, but the user named something specific
+        (Remotion, Vercel, Azure...) that the skill does not cover, so skills.sh may have a
+        better fit. Only meaningful when should_suggest is True.
+        """
+        if not self.should_suggest or self.names_specific_tech < Q.TECH_SEARCH_MIN_NAMES:
+            return []
+        if self.task_kind in Q.TECH_SEARCH_SKIP_KINDS:
+            return []
+        from skill_router.skills_sh import extract_tech_terms
+
+        haystack = f"{self.skill} {chosen_description}".lower()
+        return [term for term in extract_tech_terms(prompt) if term not in haystack]
+
     def to_dict(self) -> dict[str, Any]:
         d = asdict(self)
         d["should_suggest"] = self.should_suggest
@@ -117,6 +134,7 @@ def _route_jev(state: dict[str, Any], skills: list[SkillInfo], *, top_k: int) ->
 
     qs = {
         "needs_skill": Q.NEEDS_SKILL,
+        "names_specific_tech": Q.NAMES_SPECIFIC_TECH,
         "task_kind": Q.TASK_KIND,
         "skills_sh_topic": Q.SKILLS_SH_TOPIC,
     }
@@ -145,6 +163,7 @@ def _route_jev(state: dict[str, Any], skills: list[SkillInfo], *, top_k: int) ->
         skill_probabilities=probs,
         topic=None if topic.choice == Q.NONE_OPTION else topic.choice,
         topic_confidence=topic.confidence,
+        names_specific_tech=nouls["names_specific_tech"].noul,
         usage={"input_tokens": resp.usage.input_tokens, "output_tokens": resp.usage.output_tokens},
     )
 
@@ -209,4 +228,10 @@ def _route_mock(state: dict[str, Any], skills: list[SkillInfo], *, top_k: int) -
         skill_probabilities=dict(list(ranked.items())[:top_k]),
         topic=None if topic == Q.NONE_OPTION else topic,
         topic_confidence=_confidence(topic_probs),
+        names_specific_tech=0.8 if _mock_names_tech(state.get("user_prompt", "")) else 0.15,
     )
+
+
+def _mock_names_tech(prompt: str) -> bool:
+    from skill_router.skills_sh import _TECH_HINTS, extract_tech_terms
+    return any(t in _TECH_HINTS for t in extract_tech_terms(prompt))

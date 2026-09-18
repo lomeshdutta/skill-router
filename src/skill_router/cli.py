@@ -38,11 +38,18 @@ def cmd_suggest(args: argparse.Namespace) -> int:
     state = build_state(prompt, cwd=cwd)
     skills = catalog.discover(cwd)
     rec = route(state, skills)
-    remote = skills_sh.find(skills_sh.build_query(prompt, rec.topic, rec.task_kind), limit=3) if (args.remote and rec.should_search_skills_sh and rec.topic) else []
+    remote, uncovered = [], []
+    if args.remote and rec.should_search_skills_sh and rec.topic:
+        remote = skills_sh.find(skills_sh.build_query(prompt, rec.topic, rec.task_kind), limit=3)
+    elif args.remote and rec.should_suggest:
+        chosen = next((s.description for s in skills if s.name == rec.skill), "")
+        uncovered = rec.uncovered_tech_terms(prompt, chosen)
+        if uncovered:
+            remote = skills_sh.find(skills_sh.build_query(prompt, rec.topic, rec.task_kind), limit=3)
     if args.json:
-        print(json.dumps({"state": state, "recommendation": rec.to_dict(), "remote": [r.to_dict() for r in remote]}, indent=2))
+        print(json.dumps({"state": state, "recommendation": rec.to_dict(), "remote": [r.to_dict() for r in remote], "uncovered_tech_terms": uncovered}, indent=2))
         return 0
-    ctx, human = hook.format_context(rec, remote)
+    ctx, human = hook.format_context(rec, remote, uncovered)
     print(f"source={rec.source} model={rec.model} latency={rec.latency_ms}ms skills_considered={len(skills)} usage={rec.usage}")
     print(ctx)
     if human:

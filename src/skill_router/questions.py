@@ -32,6 +32,13 @@ STRONG_PICK_MIN_PROB = 0.85
 # Search skills.sh only when the prompt clearly wants a skill but nothing local fits well.
 SEARCH_SKILLS_SH_MIN_NEEDS = 0.60
 SEARCH_SKILLS_SH_MAX_LOCAL_PROB = 0.40
+# When a local skill IS suggested but the prompt names a specific technology the skill's
+# description never mentions, also search skills.sh. Gate on this Noul so generic nouns
+# (MRR, PowerPoint, a URL) don't trigger it.
+TECH_SEARCH_MIN_NAMES = 0.60
+# ...and never for these task kinds: there the named technology is the SUBJECT of the request
+# ("what do people think of Cursor", "postgres vs sqlite?"), not a tool the user is operating.
+TECH_SEARCH_SKIP_KINDS = {"research", "planning_strategy", "docs_writing", "conversation_other"}
 # Jev supports up to 255 options in a Choice. Leave headroom for the "none" option.
 MAX_SKILL_OPTIONS = 250
 # Truncate skill descriptions sent to Jev (token cost is per input token).
@@ -56,6 +63,17 @@ NEEDS_SKILL = Noul(
             "A quick factual question, a small generic code edit, a clarification, "
             "casual conversation, or a task any competent engineer handles without a guide."
         ),
+    },
+)
+
+NAMES_SPECIFIC_TECH = Noul(
+    instructions=(
+        "Does the request name a specific third-party framework, library, vendor, cloud service, "
+        "or developer product that a specialised guide would exist for?"
+    ),
+    criteria={
+        "true": "Names something like Supabase, Remotion, Prisma, Azure Kubernetes, shadcn/ui, Google ADK, Stripe, Expo.",
+        "false": "Only generic nouns (spreadsheet, deck, email, database, website, video) or the user's own project.",
     },
 )
 

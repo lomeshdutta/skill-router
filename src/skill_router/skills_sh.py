@@ -84,7 +84,8 @@ def extract_tech_terms(prompt: str, limit: int = 4) -> list[str]:
     for raw in _WORD_RE.findall(prompt):
         word = raw.strip(".,;:!?'\"")
         low = re.sub(r"'s$", "", word.lower())
-        if not word or low in _QUERY_STOP:
+        looks_like_url = ("://" in low or low.startswith("www.") or re.search(r"\.(com|org|net|io|ai|dev|sh|app)(/|$)", low)) and low not in _TECH_HINTS
+        if not word or low in _QUERY_STOP or looks_like_url:
             sentence_start = raw.endswith((".", "?", "!"))
             continue
         is_proper = word[0].isupper() and not sentence_start and len(word) > 1 and not word.isupper() or (word.isupper() and 2 <= len(word) <= 5)

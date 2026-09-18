@@ -46,8 +46,9 @@ def main() -> None:
     tok: list[int] = []
 
     # ---------------------------------------------------------------- installed
-    lines += ["## Installed skills (10)", "", "| expected | Jev top-1 | p | conf | needs | spoke? | top-3 | verdict |", "|---|---|---|---|---|---|---|---|"]
-    top1 = top3 = spoke_right = 0
+    lines += ["## Installed skills (10)", "", "| expected | Jev top-1 | p | conf | needs | spoke? | top-3 | extra skills.sh search? | verdict |", "|---|---|---|---|---|---|---|---|---|"]
+    top1 = top3 = spoke_right = extra_fired = 0
+    by_name = {s.name: s for s in skills}
     for c in CASES["installed"]:
         assert c["expect"] in names, f"{c['expect']} not in catalog"
         rec = route(build_state(c["prompt"], cwd=CWD), skills)
@@ -58,18 +59,23 @@ def main() -> None:
         spoke = rec.should_suggest and hit1
         spoke_right += spoke
         verdict = "PASS" if spoke else ("top-3" if hit3 else "MISS")
-        lines.append(f"| {c['expect']} | {rec.skill or 'none'} | {rec.skill_probability:.2f} | {rec.skill_confidence:.2f} | {rec.needs_skill:.2f} | {'yes' if rec.should_suggest else 'no'} | {', '.join(ranked[:3])} | {verdict} |")
+        unc = rec.uncovered_tech_terms(c["prompt"], by_name.get(rec.skill or "", None).description if rec.skill in by_name else "")
+        extra_fired += bool(unc)
+        lines.append(f"| {c['expect']} | {rec.skill or 'none'} | {rec.skill_probability:.2f} | {rec.skill_confidence:.2f} | {rec.needs_skill:.2f} | {'yes' if rec.should_suggest else 'no'} | {', '.join(ranked[:3])} | {('YES: ' + ', '.join(unc)) if unc else 'no'} | {verdict} |")
         print(f"[installed] {c['expect']:18s} -> {rec.skill or 'none':18s} p={rec.skill_probability:.2f} {verdict}", flush=True)
-    lines += ["", f"**Top-1: {top1}/10 · Top-3: {top3}/10 · Hook spoke with the right skill: {spoke_right}/10**", ""]
+    lines += ["", f"**Top-1: {top1}/10 · Top-3: {top3}/10 · Hook spoke with the right skill: {spoke_right}/10 · Unwanted extra skills.sh search: {extra_fired}/10**", ""]
 
     # ------------------------------------------------------------ not installed
-    lines += ["## Not installed, should fall through to skills.sh (10)", "", "| expected on skills.sh | local pick | p | false suggest? | search fired? | topic | rank via topic query | rank via prompt query | rank via tech query | tech query |", "|---|---|---|---|---|---|---|---|---|---|"]
+    lines += ["## Not installed, should fall through to skills.sh (10)", "", "| expected on skills.sh | local pick | p | local suggest? | tech named (Jev) | search fired? | topic | rank via topic query | rank via prompt query | rank via tech query | tech query |", "|---|---|---|---|---|---|---|---|---|---|---|"]
     fp = fired = hit_topic = hit_prompt = hit_tech = 0
+    by_name = {s.name: s for s in skills}
     for c in CASES["not_installed"]:
         rec = route(build_state(c["prompt"], cwd=CWD), skills)
         lat.append(rec.latency_ms); tok.append(rec.usage.get("input_tokens") or 0)
         false_pos = rec.should_suggest
-        fp += false_pos; fired += rec.should_search_skills_sh
+        unc = rec.uncovered_tech_terms(c["prompt"], by_name[rec.skill].description if rec.skill in by_name else "")
+        fires = rec.should_search_skills_sh or bool(unc)
+        fp += false_pos; fired += fires
         r_topic = r_prompt = r_tech = None
         q_tech = skills_sh.build_query(c["prompt"], rec.topic, rec.task_kind)
         if REMOTE:
@@ -79,12 +85,12 @@ def main() -> None:
             r_tech = remote_hit(c["expect"], skills_sh.find(q_tech, limit=5))
         hit_topic += r_topic is not None; hit_prompt += r_prompt is not None; hit_tech += r_tech is not None
         fmt = lambda r: "-" if r is None else (f"#{r}" if r > 0 else f"repo #{-r}")
-        lines.append(f"| {c['expect']} | {rec.skill or 'none'} | {rec.skill_probability:.2f} | {'YES' if false_pos else 'no'} | {'yes' if rec.should_search_skills_sh else 'NO'} | {rec.topic} | {fmt(r_topic)} | {fmt(r_prompt)} | {fmt(r_tech)} | `{q_tech}` |")
-        print(f"[remote]    {c['expect'][:40]:40s} local={rec.skill or 'none':16s} fp={false_pos} fired={rec.should_search_skills_sh} topic={fmt(r_topic)} prompt={fmt(r_prompt)} tech={fmt(r_tech)} q={q_tech!r}", flush=True)
-    lines += ["", f"**False local suggestions: {fp}/10 · Search fired: {fired}/10 · Target found via topic query: {hit_topic}/10 · via prompt query: {hit_prompt}/10 · via tech query (now used by the hook): {hit_tech}/10**", ""]
+        lines.append(f"| {c['expect']} | {rec.skill or 'none'} | {rec.skill_probability:.2f} | {(rec.skill + ' (uncovered: ' + ', '.join(unc) + ')') if false_pos and unc else ('YES ' + rec.skill) if false_pos else 'no'} | {rec.names_specific_tech:.2f} | {'yes' if fires else 'NO'} | {rec.topic} | {fmt(r_topic)} | {fmt(r_prompt)} | {fmt(r_tech)} | `{q_tech}` |")
+        print(f"[remote]    {c['expect'][:40]:40s} local={rec.skill or 'none':16s} fp={false_pos} unc={unc} fired={fires} topic={fmt(r_topic)} prompt={fmt(r_prompt)} tech={fmt(r_tech)} q={q_tech!r}", flush=True)
+    lines += ["", f"**Local suggestion made: {fp}/10 · skills.sh search fired (either path): {fired}/10 · Target found via topic query: {hit_topic}/10 · via prompt query: {hit_prompt}/10 · via tech query (now used by the hook): {hit_tech}/10**", ""]
 
     # ------------------------------------------------------------------- bonus
-    lines += ["## Bonus: ambiguous case (Jev picked skill-creator; on inspection its description covers "run evals to test a skill", so this is arguably correct)", ""]
+    lines += ["## Bonus: ambiguous case (Jev picked skill-creator; its description covers 'run evals to test a skill', so this is arguably correct)", ""]
     for c in CASES["bonus_ambiguous_checks"]:
         rec = route(build_state(c["prompt"], cwd=CWD), skills)
         lines.append(f"- `{c['prompt'][:70]}…` → {rec.skill or 'none'} p={rec.skill_probability:.2f} needs={rec.needs_skill:.2f} spoke={'yes' if rec.should_suggest else 'no'}")
