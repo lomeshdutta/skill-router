@@ -24,3 +24,6 @@ portfolio.html
 *.board.html
 REVIEW-LOG-*.md
 evals/reports/*-mock.md
+
+# promo assets (video source, renders) are kept out of the public repo
+promo/
