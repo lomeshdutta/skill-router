@@ -169,7 +169,33 @@ def _route_jev(state: dict[str, Any], skills: list[SkillInfo], *, top_k: int) ->
 
 # ---------------------------------------------------------------------------- mock path
 _WORD = re.compile(r"[a-z][a-z0-9+#-]{2,}")
-_STOP = {"the", "and", "for", "with", "this", "that", "from", "into", "your", "you", "use", "when", "what", "how", "can", "please", "help", "make", "want", "need", "like", "about", "using", "should", "will"}
+_STOP = {
+    "the",
+    "and",
+    "for",
+    "with",
+    "this",
+    "that",
+    "from",
+    "into",
+    "your",
+    "you",
+    "use",
+    "when",
+    "what",
+    "how",
+    "can",
+    "please",
+    "help",
+    "make",
+    "want",
+    "need",
+    "like",
+    "about",
+    "using",
+    "should",
+    "will",
+}
 
 
 def _tokens(text: str) -> set[str]:

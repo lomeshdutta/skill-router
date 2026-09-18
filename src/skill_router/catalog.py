@@ -20,11 +20,22 @@ from __future__ import annotations
 import json
 import os
 import re
+import sys
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
 CLAUDE_HOME = Path(os.environ.get("CLAUDE_CONFIG_DIR", Path.home() / ".claude"))
-APP_SKILLS_GLOB = Path.home() / "Library" / "Application Support" / "Claude" / "local-agent-mode-sessions" / "skills-plugin"
+# The desktop app's bundled skills. Only known on macOS; override with SKILL_ROUTER_APP_SKILLS_DIR.
+_DEFAULT_APP_SKILLS = (
+    Path.home() / "Library" / "Application Support" / "Claude" / "local-agent-mode-sessions" / "skills-plugin"
+    if sys.platform == "darwin"
+    else None
+)
+APP_SKILLS_GLOB: Path | None = (
+    Path(os.environ["SKILL_ROUTER_APP_SKILLS_DIR"])
+    if os.environ.get("SKILL_ROUTER_APP_SKILLS_DIR")
+    else _DEFAULT_APP_SKILLS
+)
 
 # Claude Code built-ins. Descriptions paraphrase the harness's own skill listing.
 BUILTIN_SKILLS: dict[str, str] = {
@@ -176,7 +187,7 @@ def _plugin_skill_files(settings: dict) -> list[Path]:
 
 def _app_skill_files() -> list[Path]:
     """Bundled desktop-app skills. The path contains session ids, so take the newest folder."""
-    if not APP_SKILLS_GLOB.is_dir():
+    if APP_SKILLS_GLOB is None or not APP_SKILLS_GLOB.is_dir():
         return []
     dirs = [d for d in APP_SKILLS_GLOB.glob("*/*/skills") if d.is_dir()]
     if not dirs:

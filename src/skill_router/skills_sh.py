@@ -18,7 +18,9 @@ from pathlib import Path
 CACHE_DIR = Path.home() / ".cache" / "skill-router"
 CACHE_TTL_SECONDS = 24 * 3600
 _ANSI = re.compile(r"\x1b\[[0-9;]*m")
-_LINE = re.compile(r"^(?P<pkg>[\w.-]+/[\w.-]+)@(?P<skill>[^\s]+(?: [^\s]+)*?)\s+(?P<installs>[\d.,]+[KM]?) installs?", re.M)
+_LINE = re.compile(
+    r"^(?P<pkg>[\w.-]+/[\w.-]+)@(?P<skill>[^\s]+(?: [^\s]+)*?)\s+(?P<installs>[\d.,]+[KM]?) installs?", re.M
+)
 _URL = re.compile(r"https://skills\.sh/\S+")
 
 
@@ -52,25 +54,182 @@ def parse_find_output(text: str) -> list[RemoteSkill]:
 
 # Words that carry no search signal even when capitalised (sentence starts, common verbs/nouns).
 _QUERY_STOP = {
-    "a", "an", "the", "and", "or", "for", "with", "this", "that", "these", "those", "my", "our", "your",
-    "in", "on", "to", "of", "from", "into", "using", "use", "set", "up", "add", "build", "write", "make",
-    "create", "review", "deploy", "generate", "help", "me", "we", "i", "it", "is", "are", "each", "all",
-    "page", "app", "project", "product", "description", "problems", "policies", "queries", "screens",
-    "second", "seconds", "first", "new", "slow", "fast", "following", "questions", "over", "docs",
+    "a",
+    "an",
+    "the",
+    "and",
+    "or",
+    "for",
+    "with",
+    "this",
+    "that",
+    "these",
+    "those",
+    "my",
+    "our",
+    "your",
+    "in",
+    "on",
+    "to",
+    "of",
+    "from",
+    "into",
+    "using",
+    "use",
+    "set",
+    "up",
+    "add",
+    "build",
+    "write",
+    "make",
+    "create",
+    "review",
+    "deploy",
+    "generate",
+    "help",
+    "me",
+    "we",
+    "i",
+    "it",
+    "is",
+    "are",
+    "each",
+    "all",
+    "page",
+    "app",
+    "project",
+    "product",
+    "description",
+    "problems",
+    "policies",
+    "queries",
+    "screens",
+    "second",
+    "seconds",
+    "first",
+    "new",
+    "slow",
+    "fast",
+    "following",
+    "questions",
+    "over",
+    "docs",
 }
 # Lower-case technology/vendor words worth keeping even when the user didn't capitalise them.
 _TECH_HINTS = {
-    "postgres", "postgresql", "mysql", "sqlite", "redis", "mongodb", "supabase", "neon", "prisma", "drizzle",
-    "react", "nextjs", "next.js", "vue", "svelte", "angular", "remix", "astro", "tailwind", "shadcn", "shadcn/ui",
-    "expo", "flutter", "swift", "kotlin", "android", "ios", "electron", "tauri",
-    "docker", "kubernetes", "k8s", "aks", "eks", "gke", "terraform", "aws", "azure", "gcp", "vercel", "netlify",
-    "cloudflare", "fly.io", "heroku", "railway", "render", "github", "gitlab", "ci", "cd",
-    "python", "typescript", "javascript", "node", "rust", "go", "golang", "java", "ruby", "rails", "django",
-    "fastapi", "flask", "laravel", "php", "graphql", "grpc", "rest", "openapi", "stripe", "twilio", "sendgrid",
-    "openai", "anthropic", "claude", "gemini", "langchain", "langgraph", "adk", "mcp", "rag", "llm", "agent",
-    "remotion", "ffmpeg", "figma", "storybook", "playwright", "cypress", "jest", "vitest", "pytest", "testing",
-    "video", "audio", "image", "seo", "analytics", "posthog", "segment", "mixpanel", "notion", "slack", "lark",
-    "salesforce", "hubspot", "shopify", "wordpress", "webflow", "framer", "unity", "unreal", "godot",
+    "postgres",
+    "postgresql",
+    "mysql",
+    "sqlite",
+    "redis",
+    "mongodb",
+    "supabase",
+    "neon",
+    "prisma",
+    "drizzle",
+    "react",
+    "nextjs",
+    "next.js",
+    "vue",
+    "svelte",
+    "angular",
+    "remix",
+    "astro",
+    "tailwind",
+    "shadcn",
+    "shadcn/ui",
+    "expo",
+    "flutter",
+    "swift",
+    "kotlin",
+    "android",
+    "ios",
+    "electron",
+    "tauri",
+    "docker",
+    "kubernetes",
+    "k8s",
+    "aks",
+    "eks",
+    "gke",
+    "terraform",
+    "aws",
+    "azure",
+    "gcp",
+    "vercel",
+    "netlify",
+    "cloudflare",
+    "fly.io",
+    "heroku",
+    "railway",
+    "render",
+    "github",
+    "gitlab",
+    "ci",
+    "cd",
+    "python",
+    "typescript",
+    "javascript",
+    "node",
+    "rust",
+    "go",
+    "golang",
+    "java",
+    "ruby",
+    "rails",
+    "django",
+    "fastapi",
+    "flask",
+    "laravel",
+    "php",
+    "graphql",
+    "grpc",
+    "rest",
+    "openapi",
+    "stripe",
+    "twilio",
+    "sendgrid",
+    "openai",
+    "anthropic",
+    "claude",
+    "gemini",
+    "langchain",
+    "langgraph",
+    "adk",
+    "mcp",
+    "rag",
+    "llm",
+    "agent",
+    "remotion",
+    "ffmpeg",
+    "figma",
+    "storybook",
+    "playwright",
+    "cypress",
+    "jest",
+    "vitest",
+    "pytest",
+    "testing",
+    "video",
+    "audio",
+    "image",
+    "seo",
+    "analytics",
+    "posthog",
+    "segment",
+    "mixpanel",
+    "notion",
+    "slack",
+    "lark",
+    "salesforce",
+    "hubspot",
+    "shopify",
+    "wordpress",
+    "webflow",
+    "framer",
+    "unity",
+    "unreal",
+    "godot",
 }
 _WORD_RE = re.compile(r"[A-Za-z][A-Za-z0-9.+#/-]*")
 
@@ -84,11 +243,19 @@ def extract_tech_terms(prompt: str, limit: int = 4) -> list[str]:
     for raw in _WORD_RE.findall(prompt):
         word = raw.strip(".,;:!?'\"")
         low = re.sub(r"'s$", "", word.lower())
-        looks_like_url = ("://" in low or low.startswith("www.") or re.search(r"\.(com|org|net|io|ai|dev|sh|app)(/|$)", low)) and low not in _TECH_HINTS
+        looks_like_url = (
+            "://" in low or low.startswith("www.") or re.search(r"\.(com|org|net|io|ai|dev|sh|app)(/|$)", low)
+        ) and low not in _TECH_HINTS
         if not word or low in _QUERY_STOP or looks_like_url:
             sentence_start = raw.endswith((".", "?", "!"))
             continue
-        is_proper = word[0].isupper() and not sentence_start and len(word) > 1 and not word.isupper() or (word.isupper() and 2 <= len(word) <= 5)
+        is_proper = (
+            word[0].isupper()
+            and not sentence_start
+            and len(word) > 1
+            and not word.isupper()
+            or (word.isupper() and 2 <= len(word) <= 5)
+        )
         if (is_proper or low in _TECH_HINTS) and low not in seen:
             seen.add(low)
             terms.append(low)
@@ -119,7 +286,10 @@ def find(query: str, limit: int = 5, timeout: float = 12.0) -> list[RemoteSkill]
     cache = _cache_path(query)
     try:
         if cache.exists() and time.time() - cache.stat().st_mtime < CACHE_TTL_SECONDS:
-            return [RemoteSkill(**{k: v for k, v in d.items() if k != "install_command"}) for d in json.loads(cache.read_text())][:limit]
+            return [
+                RemoteSkill(**{k: v for k, v in d.items() if k != "install_command"})
+                for d in json.loads(cache.read_text())
+            ][:limit]
     except (OSError, json.JSONDecodeError, TypeError):
         pass
     npx = shutil.which("npx")
@@ -128,7 +298,10 @@ def find(query: str, limit: int = 5, timeout: float = 12.0) -> list[RemoteSkill]
     try:
         proc = subprocess.run(
             [npx, "-y", "skills", "find", query],
-            capture_output=True, text=True, timeout=timeout, env={"DISABLE_TELEMETRY": "1", "PATH": _path()},
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            env={"DISABLE_TELEMETRY": "1", "PATH": _path()},
         )
     except (OSError, subprocess.SubprocessError):
         return []
@@ -143,4 +316,5 @@ def find(query: str, limit: int = 5, timeout: float = 12.0) -> list[RemoteSkill]
 
 def _path() -> str:
     import os
+
     return os.environ.get("PATH", "/usr/local/bin:/usr/bin:/bin:/opt/homebrew/bin")

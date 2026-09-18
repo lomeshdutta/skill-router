@@ -1,15 +1,28 @@
 [project]
 name = "skill-router"
-version = "0.1.0"
-description = "Add your description here"
+version = "0.2.0"
+description = "Tell Claude Code which installed skill a session needs, using Jev (TypeSafe AI) for the decision and skills.sh for discovery."
 readme = "README.md"
-authors = [
-    { name = "Ninja Coder", email = "2924289+ninjacoder13@users.noreply.github.com" }
-]
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Ninja Coder" }]
 requires-python = ">=3.12"
+keywords = ["claude-code", "agent-skills", "skills.sh", "typesafe", "jev", "routing"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries",
+]
 dependencies = [
     "typesafe-sdk>=0.6.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/ninjacoder13/skill-router"
+Issues = "https://github.com/ninjacoder13/skill-router/issues"
 
 [project.scripts]
 skill-router = "skill_router:main"
@@ -21,4 +34,19 @@ build-backend = "uv_build"
 [dependency-groups]
 dev = [
     "pytest>=9.1.1",
+    "ruff>=0.16.8",
 ]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+extend-exclude = ["githooks"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+# The formatter owns line width. E501 would only flag long string literals (skill descriptions,
+# report rows) that read worse when split.
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

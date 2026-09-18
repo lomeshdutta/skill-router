@@ -47,8 +47,10 @@ def should_skip(prompt: str) -> str | None:
 def format_context(rec: Recommendation, remote: list[skills_sh.RemoteSkill]) -> tuple[str, str]:
     """Return (additionalContext for Claude, short systemMessage for the human)."""
     tag = "skill-router" + (" (mock, no TYPESAFE_API_KEY)" if rec.source == "mock" else "")
-    lines = [f"[{tag}] Jev classified this prompt as `{rec.task_kind}` "
-             f"(confidence {rec.task_kind_confidence:.2f}); needs-a-skill probability {rec.needs_skill:.2f}."]
+    lines = [
+        f"[{tag}] Jev classified this prompt as `{rec.task_kind}` "
+        f"(confidence {rec.task_kind_confidence:.2f}); needs-a-skill probability {rec.needs_skill:.2f}."
+    ]
     human = ""
     if rec.should_suggest:
         p = rec.skill_probabilities.get(rec.skill or "", 0.0)
@@ -62,7 +64,9 @@ def format_context(rec: Recommendation, remote: list[skills_sh.RemoteSkill]) -> 
             lines.append(f"Also plausible: {alts}.")
             human += "  alt: " + ", ".join(n for n, _ in rec.runners_up)
     elif rec.skill and rec.runners_up:
-        alts = ", ".join(f"`{n}` ({p:.2f})" for n, p in [(rec.skill, rec.skill_probabilities.get(rec.skill, 0.0)), *rec.runners_up])
+        alts = ", ".join(
+            f"`{n}` ({p:.2f})" for n, p in [(rec.skill, rec.skill_probabilities.get(rec.skill, 0.0)), *rec.runners_up]
+        )
         lines.append(f"No single installed skill stands out. Candidates if useful: {alts}.")
         human = "skill-router → unsure: " + ", ".join([rec.skill, *[n for n, _ in rec.runners_up]])
     else:
@@ -99,16 +103,18 @@ def run(payload: dict[str, Any], *, search_remote: bool = True) -> dict[str, Any
     if search_remote and rec.should_search_skills_sh and rec.topic:
         remote = skills_sh.find(skills_sh.build_query(prompt, rec.topic, rec.task_kind), limit=3)
     context, human = format_context(rec, remote)
-    _log({
-        "ts": time.time(),
-        "session_id": payload.get("session_id"),
-        "prompt_sha": hashlib.sha256(prompt.encode()).hexdigest()[:12],
-        "prompt_head": prompt[:160],
-        "cwd": cwd,
-        "n_skills": len(skills),
-        "recommendation": rec.to_dict(),
-        "remote": [r.to_dict() for r in remote],
-    })
+    _log(
+        {
+            "ts": time.time(),
+            "session_id": payload.get("session_id"),
+            "prompt_sha": hashlib.sha256(prompt.encode()).hexdigest()[:12],
+            "prompt_head": prompt[:160],
+            "cwd": cwd,
+            "n_skills": len(skills),
+            "recommendation": rec.to_dict(),
+            "remote": [r.to_dict() for r in remote],
+        }
+    )
     out: dict[str, Any] = {
         "hookSpecificOutput": {"hookEventName": "UserPromptSubmit", "additionalContext": context},
     }

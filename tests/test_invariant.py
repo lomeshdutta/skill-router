@@ -33,6 +33,7 @@ def test_hook_survives_garbage_stdin(capsys):
 def test_hook_survives_router_crash(monkeypatch, capsys, tmp_path):
     def boom(*a, **k):
         raise RuntimeError("network down")
+
     monkeypatch.setattr(hook, "route", boom)
     payload = json.dumps({"prompt": "review my diff for bugs before I commit", "cwd": str(tmp_path)})
     code, out = _run_hook_main(payload, capsys)

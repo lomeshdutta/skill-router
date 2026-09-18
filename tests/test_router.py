@@ -2,7 +2,6 @@
 
 import json
 import os
-from pathlib import Path
 
 import pytest
 
@@ -50,12 +49,26 @@ def test_discover_reads_project_and_respects_off_override(tmp_path, monkeypatch)
 
 def test_strong_pick_overrides_lukewarm_needs_skill():
     from skill_router.router import Recommendation
-    base = dict(source="jev", model="m", latency_ms=1, task_kind="test", task_kind_confidence=1.0,
-                topic=None, topic_confidence=0.0)
-    strong = Recommendation(needs_skill=0.34, skill="xlsx", skill_confidence=0.97,
-                            skill_probabilities={"xlsx": 0.97, "dataviz": 0.02}, **base)
-    weak = Recommendation(needs_skill=0.34, skill="cto", skill_confidence=0.76,
-                          skill_probabilities={"cto": 0.77, "none": 0.23}, **base)
+
+    base = dict(
+        source="jev",
+        model="m",
+        latency_ms=1,
+        task_kind="test",
+        task_kind_confidence=1.0,
+        topic=None,
+        topic_confidence=0.0,
+    )
+    strong = Recommendation(
+        needs_skill=0.34,
+        skill="xlsx",
+        skill_confidence=0.97,
+        skill_probabilities={"xlsx": 0.97, "dataviz": 0.02},
+        **base,
+    )
+    weak = Recommendation(
+        needs_skill=0.34, skill="cto", skill_confidence=0.76, skill_probabilities={"cto": 0.77, "none": 0.23}, **base
+    )
     assert strong.should_suggest
     assert not weak.should_suggest
 
@@ -105,13 +118,17 @@ def test_parse_skills_sh_find_output():
         "\x1b[38;5;145mtrungdo9/claukit@seo-schema\x1b[0m \x1b[36m1 install\x1b[0m\n"
     )
     res = skills_sh.parse_find_output(sample)
-    assert [(r.package, r.skill, r.installs) for r in res] == [("affaan-m/ecc", "react-testing", "4.7K"), ("trungdo9/claukit", "seo-schema", "1")]
+    assert [(r.package, r.skill, r.installs) for r in res] == [
+        ("affaan-m/ecc", "react-testing", "4.7K"),
+        ("trungdo9/claukit", "seo-schema", "1"),
+    ]
     assert res[0].install_command == "npx skills add affaan-m/ecc@react-testing"
     assert res[0].url.endswith("/react-testing")
 
 
 def test_load_dotenv_reads_key_without_overriding(tmp_path, monkeypatch):
     from skill_router import router
+
     env = tmp_path / ".env"
     env.write_text("# comment\nTYPESAFE_API_KEY='abc123'\nOTHER=x\n")
     monkeypatch.setattr(router, "DOTENV_CANDIDATES", [env])
@@ -123,11 +140,22 @@ def test_load_dotenv_reads_key_without_overriding(tmp_path, monkeypatch):
 
 
 def test_build_query_prefers_tech_terms():
-    q = skills_sh.build_query("set up row level security policies in my Supabase Postgres database and speed up the slow queries", "databases", "build_feature")
+    q = skills_sh.build_query(
+        "set up row level security policies in my Supabase Postgres database and speed up the slow queries",
+        "databases",
+        "build_feature",
+    )
     assert q.split()[:2] == ["supabase", "postgres"]
-    q2 = skills_sh.build_query("build an agent with Google's Agent Development Kit that answers questions over our docs", "agent-workflows", "build_feature")
+    q2 = skills_sh.build_query(
+        "build an agent with Google's Agent Development Kit that answers questions over our docs",
+        "agent-workflows",
+        "build_feature",
+    )
     assert "google" in q2 and "agent" in q2
-    assert skills_sh.build_query("help me think through this idea", "productivity", "planning_strategy") == "productivity planning strategy"
+    assert (
+        skills_sh.build_query("help me think through this idea", "productivity", "planning_strategy")
+        == "productivity planning strategy"
+    )
 
 
 def test_extract_tech_terms_skips_urls():
@@ -137,6 +165,7 @@ def test_extract_tech_terms_skips_urls():
 
 def test_session_round_trip(tmp_path, monkeypatch):
     from skill_router import session
+
     monkeypatch.setattr(session, "SESSIONS_DIR", tmp_path)
     assert session.load("abc") is None
     session.save("abc/../x", {"goal": "ship it"})
@@ -147,10 +176,14 @@ def test_session_round_trip(tmp_path, monkeypatch):
 
 def test_intent_outcomes_in_mock_mode(tmp_path, monkeypatch, capsys):
     from skill_router import cli, session
+
     monkeypatch.setattr(session, "SESSIONS_DIR", tmp_path)
     monkeypatch.setattr(hook, "LOG_PATH", tmp_path / "log.jsonl")
     monkeypatch.setattr(catalog, "discover", lambda cwd=None: SKILLS)
-    assert cli.main(["intent", "set", "--session", "s1", "--json", "write cold outreach emails for sales prospecting"]) == 0
+    assert (
+        cli.main(["intent", "set", "--session", "s1", "--json", "write cold outreach emails for sales prospecting"])
+        == 0
+    )
     out = json.loads(capsys.readouterr().out)
     assert out["outcome"] == "A" and out["recommendation"]["skill"] == "cold-email"
     assert session.load("s1")["summary"] == "load /cold-email"
@@ -159,8 +192,11 @@ def test_intent_outcomes_in_mock_mode(tmp_path, monkeypatch, capsys):
 
 
 def test_session_start_hook_shapes(tmp_path, monkeypatch, capsys):
-    import io, sys as _sys
+    import io
+    import sys as _sys
+
     from skill_router import cli, session
+
     monkeypatch.setattr(session, "SESSIONS_DIR", tmp_path)
     monkeypatch.setattr(hook, "LOG_PATH", tmp_path / "log.jsonl")
     for stdin_text, expect in [

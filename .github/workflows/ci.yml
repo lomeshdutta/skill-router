@@ -1,0 +1,21 @@
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync --all-groups
+      - run: uv run ruff check .
+      - run: uv run pytest -q
+      - run: scripts/check_invariant
+      # No API key in CI: the eval runs in mock mode to prove the harness itself works.
+      - run: uv run python evals/run_eval.py --no-remote --cwd .
+        env:
+          SKILL_ROUTER_MOCK: "1"

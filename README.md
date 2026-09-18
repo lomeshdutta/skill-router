@@ -1,98 +1,101 @@
 # skill-router
 
-**Problem.** Claude Code sessions have dozens (here: ~200) of installed skills, and it is on you to remember which one to invoke. **Idea.** Every time you submit a prompt, ask Jev, TypeSafe AI's ~100 ms "decision model", which installed skill fits, and whisper the answer to Claude before it starts working.
+Tell Claude Code which of your installed skills a session needs. One question at the start, one fast decision, then silence.
+
+**Problem.** Claude Code skills pile up (this machine has 131 across project, user, plugin, app and built-in scopes). A skill that is installed but never invoked is a cost with no return, and Claude does not reliably notice on its own when one applies.
+
+**Approach.** Ask [Jev](https://typesafe.ai), TypeSafe AI's decision model, to rank every installed skill against a one-sentence session goal. Jev is not a chat model: you send it typed questions and it returns a probability for every option plus a confidence, in about 350 ms, for roughly $0.0004 per call. That is cheap and fast enough to run at the start of every session, and the numbers let the tool threshold on evidence instead of parsing prose.
 
 ```
-you type a prompt
-      │
-      ▼  UserPromptSubmit hook (Claude Code runs it before the model sees the prompt)
-skill-router hook
-      │  builds a small `state`: prompt + cwd + file types + last 3 prompts
-      ▼
-Jev  (one HTTPS call, 4 questions answered in parallel)
-      │  needs_skill?  task_kind?  which installed skill?  which skills.sh topic?
-      ▼
-"Suggested skill: /cold-email (p=0.81, confidence 0.72)"   ← injected into Claude's context
-"No local fit → skills.sh: coreyhaines31/marketingskills@seo-audit"  ← only when nothing is installed
+session starts ─► hook tells Claude: infer the goal from the first message, or ask ONE question
+              ─► Claude runs:  skill-router intent set "write outreach emails to fintech VPs"
+              ─► Jev ranks all installed skills in one call
+              ─► one of three answers, then nothing more this session:
+                   A  Relevant installed skills: /cold-email (1.00). Load it when the work starts.
+                   B  No installed skill fits. Use the find-skills skill to search skills.sh.
+                   C  General assistance is fine; no skill needed.
+pivot?        ─► you type  /intent <new goal>
 ```
 
-## Why Jev rather than another LLM call
-
-- **Typed answers, not text.** Jev returns a probability for *every* installed skill (a `Choice` over up to 255 options) plus a `confidence`. The hook thresholds on those numbers instead of parsing prose.
-- **Fast and cheap.** ~100 ms per call, $0.042 per million input tokens. One prompt costs roughly $0.0005 with ~100 skills in the catalog. That is cheap enough to run on every prompt.
-- **Calibrated "I don't know".** Low confidence → the hook stays quiet or lists a few candidates instead of guessing.
-
-## Setup
+## Install
 
 ```bash
-uv sync                                   # installs typesafe-sdk + dev deps
-cp .env.example .env                      # then paste your key from https://console.typesafe.ai
-export TYPESAFE_API_KEY=...               # the hook reads the environment Claude Code runs in
-uv run skill-router suggest "audit the SEO of my landing page"
+git clone https://github.com/ninjacoder13/skill-router && cd skill-router
+uv sync
+cp .env.example .env            # paste your TypeSafe key (console.typesafe.ai)
+uv run skill-router install-hook --write      # registers the SessionStart hook for this project
 ```
 
-Without a key the router runs in **mock mode** (keyword overlap) so every command still works; output is labelled `mock`.
-
-### Wire the hook into Claude Code
-
-The project-local [.claude/settings.json](.claude/settings.json) already registers the hook for sessions started in this folder. For every project, add the same block to `~/.claude/settings.json`:
+For every project, write the hook into your user settings instead:
 
 ```bash
-uv run skill-router install-hook --settings ~/.claude/settings.json          # prints the JSON
-uv run skill-router install-hook --settings ~/.claude/settings.json --write  # merges it in
+uv run skill-router install-hook --settings ~/.claude/settings.json --write
 ```
+
+Optional but recommended for outcome B: install the [find-skills](https://skills.sh/vercel-labs/skills/find-skills) skill so Claude can search skills.sh with a quality filter:
+
+```bash
+npx skills add vercel-labs/skills --skill find-skills -g
+```
+
+No key? Everything runs in a labelled **mock mode** (keyword overlap), including the tests and the eval.
 
 ## Commands
 
 | Command | What it does |
 | --- | --- |
-| `skill-router suggest <prompt>` | Classify one prompt; `--json` dumps state + probabilities |
-| `skill-router catalog` | List the installed skills Jev chooses from (project, user, enabled plugins) |
+| `skill-router intent set "<goal>"` | Route a session goal; prints outcome A, B or C and records it for the session |
+| `skill-router intent show` / `clear` | Inspect or reset the recorded goal |
+| `skill-router session-start` | The SessionStart hook (reads Claude Code's JSON on stdin) |
+| `skill-router catalog` | List the installed skills Jev chooses from |
 | `skill-router search <query>` | Search skills.sh via `npx skills find` |
-| `skill-router hook` | Hook entry point; reads Claude Code's JSON on stdin |
 | `skill-router log` | Recent decisions from `~/.cache/skill-router/decisions.jsonl` |
-| `skill-router install-hook` | Print or write the hook config |
+| `skill-router suggest "<prompt>"` / `hook` | Legacy per-prompt routing, opt-in (see below) |
 
-Env switches: `SKILL_ROUTER_DISABLE=1` (off), `SKILL_ROUTER_MOCK=1` (force mock), `SKILL_ROUTER_QUIET=1` (hide the one-line hint shown to you).
+Switches: `SKILL_ROUTER_MOCK=1` force mock mode, `SKILL_ROUTER_DISABLE=1` silence the hooks, `SKILL_ROUTER_APP_SKILLS_DIR` override where the desktop app's bundled skills live (macOS default is detected).
 
-## Where to tune
+## How well does it work
 
-Everything Jev is asked, and every threshold, is in [src/skill_router/questions.py](src/skill_router/questions.py). Start there. The decision log is your eval set: run for a week, then adjust `SUGGEST_MIN_CONFIDENCE` and friends against real prompts.
+`uv run python evals/run_eval.py` runs the cases in `evals/cases.json` against real Jev and writes `evals/reports/<date>.md`. On 2026-09-17, with 131 installed skills, none of the prompts naming the expected skill:
+
+| Slice | Result |
+| --- | --- |
+| Session goals whose skill is installed: top-1 with outcome A | 9/10 |
+| Session goals whose skill is only on skills.sh: outcome B | 4/5 |
+| Session goals needing no skill: outcome C | 3/3 |
+| Single prompts (legacy per-prompt mode): top-1 | 10/10 |
+
+The one installed-goal miss was `firecrawl-scrape` picked at 0.81 but gated to "no skill" by a low needs-a-skill probability; a threshold question, tracked in `STATE.md`. The one outcome-B miss was a Remotion goal routed to an installed marketing `video` skill whose description explicitly lists Remotion, which is correct by that skill's own claim.
+
+Every question Jev is asked and every threshold lives in [`src/skill_router/questions.py`](src/skill_router/questions.py). The decision log is the tuning set.
+
+## What this is not
+
+- **Not per-prompt.** Version 0.1 ran on every prompt. It scored 10/10 on the eval and was still noise in practice: once a session was *about* skills it suggested `skill-creator` on four prompts in a row. The per-prompt hook survives as an opt-in: `skill-router install-hook --event UserPromptSubmit --write`.
+- **Not an installer.** It prints `npx skills add ...` commands and tells Claude to ask you; it never installs anything.
+- **Not a search engine with a thumb on the scale.** When nothing installed fits, it hands off to find-skills without pre-seeding candidates, so that skill's own quality filter (install counts, source reputation) does the work.
+- **Not a service.** The catalog is what is on your disk. No server, no telemetry beyond what `npx skills` itself sends (set `DISABLE_TELEMETRY=1` to stop that too).
+
+See [`SPEC.md`](SPEC.md) for the full cut list with reasons.
+
+## Why Jev rather than an LLM call
+
+An LLM classifier would need a prompt, produce text, and require parsing; its "confidence" would be whatever it wrote. Jev returns a calibrated probability for each of up to 255 options in a single parallel evaluation, never produces a malformed answer, and costs two orders of magnitude less. A probe on this catalog confirmed it is matching meaning, not words: a prompt stuffed with a skill's trigger words about an unrelated topic scored 0.00; a paraphrase sharing no words with the description scored 0.92. Details in `evals/reports/`.
 
 ## Layout
 
 ```
 src/skill_router/
-  questions.py   the 4 Jev questions + thresholds (review this file)
-  catalog.py     finds installed SKILL.md files, honours skillOverrides / enabledPlugins
-  context.py     builds the `state` (prompt, cwd signals, recent prompts)
-  router.py      Jev call → Recommendation; mock fallback
-  skills_sh.py   `npx skills find` wrapper with a 24 h cache
-  hook.py        UserPromptSubmit glue; never blocks, never raises
-  cli.py         argparse commands
-tests/           offline tests (mock mode)
+  questions.py   every Jev question and threshold (start here)
+  catalog.py     finds installed skills across five scopes; built-ins listed by hand
+  context.py     builds the state Jev evaluates
+  router.py      the Jev call, the mock, and the A/B/C outcome logic
+  session.py     per-session goal file
+  cli.py         all commands, including the two hooks
+  skills_sh.py   `npx skills find` wrapper with a cache
+  hook.py        legacy per-prompt hook
+evals/           cases.json, run_eval.py, reports/
+tests/           pytest, runs without a key
 ```
 
-## Eval
-
-`uv run python evals/run_eval.py` runs 20 prompts (10 installed skills, 10 that only exist on skills.sh) against real Jev and writes `evals/report-<date>.md`. Results on 2026-09-17:
-
-| Slice | Result |
-| --- | --- |
-| Installed skills, top-1 | 10/10 |
-| Installed skills, hook spoke with the right skill | 10/10 |
-| Installed skills, unwanted extra skills.sh search | 0/10 |
-| Not installed, skills.sh search fired | 8/10 |
-| Not installed, target found on skills.sh | 9/10 with the tech-term query, up from 1/10 with a topic-only query |
-
-The two not-installed cases where no search fires are Remotion and AI-video prompts: the installed marketing `video` skill's description explicitly lists Remotion and AI video, so Jev choosing it is correct by the skill's own claim.
-
-### Two search paths
-1. **No local fit** (Jev's pick is `none` or weak): search skills.sh with technology terms pulled from the prompt plus Jev's topic.
-2. **Local fit but uncovered technology**: a skill was suggested, Jev says the prompt names a specific third-party technology, and the picked skill's description never mentions it. The hook shows the local suggestion *and* the skills.sh candidates, with a caveat. Skipped for research/planning/docs prompts where the technology is the subject, not the tool.
-
-## Status
-
-- Proven (executed 2026-09-17, 8 prompts, real key): Jev picked `cold-email`, `last30days`, and an SEO audit skill correctly, and answered "none" for a time-zone question, a test fix, and a database choice. Median latency 462 ms, ~7,100 input tokens, about $0.0003 per prompt.
-- Proven: catalog discovery across project, user, plugin, desktop-app, and built-in scopes; hook JSON contract; skills.sh search.
-- Probable: thresholds. They were set by judgment, not tuned. Use `skill-router log` after a week of real prompts.
+Contributing: [`CONTRIBUTING.md`](CONTRIBUTING.md). Security and key handling: [`SECURITY.md`](SECURITY.md). License: MIT.

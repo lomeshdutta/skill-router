@@ -14,9 +14,22 @@ from typing import Any
 
 SKIP_DIRS = {".git", "node_modules", ".venv", "venv", "__pycache__", "dist", "build", ".next", ".cache"}
 MARKER_FILES = [
-    "CLAUDE.md", "package.json", "pyproject.toml", "requirements.txt", "Cargo.toml", "go.mod",
-    "Dockerfile", "docker-compose.yml", "next.config.js", "next.config.ts", "vite.config.ts",
-    "tsconfig.json", "Makefile", ".github", "prisma", "supabase",
+    "CLAUDE.md",
+    "package.json",
+    "pyproject.toml",
+    "requirements.txt",
+    "Cargo.toml",
+    "go.mod",
+    "Dockerfile",
+    "docker-compose.yml",
+    "next.config.js",
+    "next.config.ts",
+    "vite.config.ts",
+    "tsconfig.json",
+    "Makefile",
+    ".github",
+    "prisma",
+    "supabase",
 ]
 MAX_RECENT_PROMPTS = 3
 MAX_PROMPT_CHARS = 400
@@ -44,7 +57,9 @@ def _git_branch(root: Path) -> str | None:
     try:
         out = subprocess.run(
             ["git", "-C", str(root), "rev-parse", "--abbrev-ref", "HEAD"],
-            capture_output=True, text=True, timeout=1.5,
+            capture_output=True,
+            text=True,
+            timeout=1.5,
         )
         return out.stdout.strip() or None if out.returncode == 0 else None
     except (OSError, subprocess.SubprocessError):

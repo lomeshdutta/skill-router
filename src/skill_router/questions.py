@@ -120,9 +120,7 @@ def build_installed_skill_choice(skills: list[SkillInfo]) -> Choice:
         if len(desc) > MAX_DESCRIPTION_CHARS:
             desc = desc[: MAX_DESCRIPTION_CHARS - 1].rstrip() + "…"
         criteria[s.name] = desc or None
-    criteria[NONE_OPTION] = (
-        "No installed skill is a good fit; general assistance without a skill is best."
-    )
+    criteria[NONE_OPTION] = "No installed skill is a good fit; general assistance without a skill is best."
     return Choice(
         instructions=(
             "Which installed skill should the coding assistant load for this? The state is either "

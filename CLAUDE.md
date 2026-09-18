@@ -1,12 +1,13 @@
 # skill-router
 
-Predicts which Claude Code skill a prompt needs. One Jev (TypeSafe AI) call per prompt, wired in as a `UserPromptSubmit` hook.
+Predicts which Claude Code skill a session needs. One Jev (TypeSafe AI) call per session goal, wired in as a `SessionStart` hook plus `skill-router intent set`. Per-prompt routing is legacy and opt-in.
 
 - Python 3.12, `uv`. Run things with `uv run skill-router ...` or `uv run pytest`.
 - All Jev questions and thresholds live in `src/skill_router/questions.py`. Edit there, nowhere else.
 - No `TYPESAFE_API_KEY` → automatic MOCK mode (keyword overlap). Output is labelled `mock`.
 - Decisions are appended to `~/.cache/skill-router/decisions.jsonl`; `skill-router log` reads it. That file is the eval set for tuning thresholds.
-- Sandbox project: local git only, no remote.
+- Ground truth for accuracy claims: `evals/cases.json` → `uv run python evals/run_eval.py` → `evals/reports/`.
+- Open-source bound (MIT). Currently local git only; publishing is Gate P in STATE.md. Keep absolute home-directory paths out of tracked files.
 
 ## Loop-engineering methodology (loop-factory v0.3)
 - Read `CONTEXT.md` (binding terms + evidence rules) then `STATE.md` (live state; update before session end). `SPEC.md` holds the mechanic and, bindingly, what is NOT being built.
