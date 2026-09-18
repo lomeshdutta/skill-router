@@ -2,7 +2,8 @@
 
 ## What this tool touches
 
-- **Outbound:** `api.typesafe.ai` (your API key, the session goal or prompt, directory names and file-type counts), and `skills.sh` through `npx skills find` (a search string). Nothing else. `scripts/check_invariant` fails if any other host appears in `src/`.
+- **Outbound to `api.typesafe.ai`:** your API key; the session goal (or, in the opt-in per-prompt mode, the prompt plus up to three of your recent messages, 400 characters each); the project's directory *name* (not its full path); a count of files by extension; the current git branch name; the first 500 characters of the project's `CLAUDE.md` if one exists; and the names and descriptions of every installed skill. If any of that is sensitive in your project, do not use this tool there, or set `SKILL_ROUTER_DISABLE=1`.
+- **Outbound to `skills.sh`:** a search string, via `npx skills find`. Nothing else leaves the machine; `scripts/check_invariant` fails if any other host appears in `src/`, but it checks hosts, not payloads. The payload is built in one place, `src/skill_router/context.py`.
 - **Local reads:** SKILL.md files in your Claude Code skill directories, your Claude Code settings, and transcript excerpts (last three user messages) when used as a per-prompt hook.
 - **Local writes:** `~/.cache/skill-router/` (decision log, session files, search cache). The API key is never written there.
 - **Installs:** none. The tool prints `npx skills add ...` commands; it never runs them.

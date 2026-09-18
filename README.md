@@ -106,7 +106,7 @@ Skills you have switched off in Claude Code's settings are excluded.
 | Session goal, no skill would help: stayed quiet | 3 of 4 |
 | Single prompt, the right skill is installed: picked it | 10 of 10 |
 
-The misses are kept in the report and explained there rather than tuned away. Every question Jev is asked, and every threshold, lives in one file: [`src/skill_router/questions.py`](src/skill_router/questions.py).
+Reproducing these numbers needs a TypeSafe key and a similarly sized set of installed skills; mock mode runs the same harness but its scores are meaningless by design. The misses are kept in the report and explained there rather than tuned away. Every question Jev is asked, and every threshold, lives in one file: [`src/skill_router/questions.py`](src/skill_router/questions.py).
 
 ## Why a decision model instead of asking an LLM
 
@@ -124,4 +124,4 @@ The full list with reasons is in [`SPEC.md`](SPEC.md).
 
 ## Contributing and security
 
-See [`CONTRIBUTING.md`](CONTRIBUTING.md) for setup and how to add a test case, and [`SECURITY.md`](SECURITY.md) for what the tool sends where and how to report a problem. Licensed under MIT.
+See [`CONTRIBUTING.md`](CONTRIBUTING.md) for setup and how to add a test case (it also explains the maintainer files `CONTEXT.md`, `STATE.md` and `SPEC.md`), and [`SECURITY.md`](SECURITY.md) for what the tool sends where and how to report a problem. Licensed under MIT.

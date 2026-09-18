@@ -54,3 +54,26 @@ def test_key_never_written_to_decision_log(monkeypatch, tmp_path):
     monkeypatch.setenv("SKILL_ROUTER_MOCK", "1")
     hook.run({"prompt": "draft a cold outreach email sequence", "cwd": str(tmp_path)}, search_remote=False)
     assert "FAKEKEY" not in (tmp_path / "log.jsonl").read_text()
+
+
+def test_intent_survives_router_crash(monkeypatch, tmp_path, capsys):
+    from skill_router import cli, session
+
+    monkeypatch.setattr(session, "SESSIONS_DIR", tmp_path)
+
+    def boom(*a, **k):
+        raise ConnectionError("jev unreachable")
+
+    monkeypatch.setattr(cli, "route", boom)
+    assert cli.main(["intent", "set", "--session", "x", "--json", "ship the thing"]) == 0
+    out = json.loads(capsys.readouterr().out)
+    assert out["outcome"] == "error" and "ConnectionError" in out["text"]
+    assert "jev unreachable" in (tmp_path / "log.jsonl").read_text()
+
+
+def test_state_never_carries_absolute_path(tmp_path):
+    from skill_router.context import build_state
+
+    state = build_state("do a thing", cwd=str(tmp_path))
+    assert "path" not in state["project"]
+    assert str(tmp_path) not in json.dumps(state)

@@ -20,7 +20,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "src" / "skill_router"
 ALLOWED_HOSTS = {"api.typesafe.ai", "skills.sh", "www.skills.sh", "console.typesafe.ai", "docs.typesafe.ai", "github.com"}
 HOST_RE = re.compile(r"https?://([A-Za-z0-9.-]+)")
-HOOK_ENTRY_POINTS = ("hook.py:main", "cli.py:cmd_session_start")
+HOOK_ENTRY_POINTS = ("hook.py:main", "cli.py:cmd_session_start", "cli.py:cmd_intent")
 
 
 def main() -> int:

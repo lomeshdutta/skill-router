@@ -1,11 +1,12 @@
 {
+  "_comment": "Illustrative. `uv run skill-router install-hook --write` generates this with the absolute path of this checkout's virtualenv filled in.",
   "hooks": {
     "SessionStart": [
       {
         "hooks": [
           {
             "type": "command",
-            "command": "uv run --project . skill-router session-start",
+            "command": "<path-to-skill-router>/.venv/bin/skill-router session-start",
             "timeout": 10
           }
         ]

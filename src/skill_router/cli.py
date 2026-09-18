@@ -115,8 +115,19 @@ def cmd_intent(args: argparse.Namespace) -> int:
         print('usage: skill-router intent set "<one-sentence goal>"', file=sys.stderr)
         return 2
     cwd = args.cwd or os.getcwd()
-    skills = catalog.discover(cwd)
-    rec = route(build_state(goal, cwd=cwd, goal=True), skills)
+    try:
+        skills = catalog.discover(cwd)
+        rec = route(build_state(goal, cwd=cwd, goal=True), skills)
+    except Exception as exc:  # noqa: BLE001 - Jev outage, bad key, proxy: never break the session
+        hook._log({"error": traceback.format_exc()[-2000:], "where": "intent", "goal": goal})
+        reason = exc.__class__.__name__
+        text = (
+            f"[skill-router] Could not get a routing decision ({reason}); proceeding without a suggestion. "
+            "Load skills by hand if you know one applies. Details in ~/.cache/skill-router/decisions.jsonl."
+        )
+        session.save(sid, {"goal": goal, "cwd": cwd, "outcome": "error", "summary": f"error: {reason}"})
+        print(json.dumps({"goal": goal, "outcome": "error", "text": text}, indent=2) if args.json else text)
+        return 0
     text = format_intent(rec, skills, goal)
     summary = {
         OUTCOME_INSTALLED: f"load /{rec.skill}",

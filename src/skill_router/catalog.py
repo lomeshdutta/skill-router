@@ -38,6 +38,7 @@ APP_SKILLS_GLOB: Path | None = (
 )
 
 # Claude Code built-ins. Descriptions paraphrase the harness's own skill listing.
+# Hand-maintained; last verified against Claude Code's skill list on 2026-09-17. Add or remove here.
 BUILTIN_SKILLS: dict[str, str] = {
     "code-review": "Review the current diff, a PR, branch, or path for correctness bugs and simplification, reuse, or efficiency cleanups. Use for 'review my changes', 'check this PR', 'find bugs in my diff'.",
     "simplify": "Review changed code for reuse, simplification, efficiency, and clarity cleanups, then apply the fixes. Quality only, not bug hunting.",

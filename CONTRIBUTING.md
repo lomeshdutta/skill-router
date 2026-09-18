@@ -32,4 +32,4 @@ Optional: `git config core.hooksPath githooks` installs a local commit hook that
 
 ## Maintainer docs
 
-`CONTEXT.md` (terms and evidence rules), `STATE.md` (where things stand), and `SPEC.md` (what this is and, bindingly, what it is not) follow the loop-factory methodology. They are for whoever maintains the project and its coding agent; you do not need them to contribute a fix.
+`CONTEXT.md` (terms and evidence rules), `STATE.md` (where things stand), and `SPEC.md` (what this is and, bindingly, what it is not) follow the author's "loop-factory" working method for agent-maintained projects: claims carry an evidence grade, commits carry decision trailers, and the project names one invariant it enforces with a script. They are for whoever maintains the project and its coding agent; you do not need them to contribute a fix.

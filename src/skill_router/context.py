@@ -119,7 +119,6 @@ def build_state(
     try:
         project: dict[str, Any] = {
             "directory": root.name,
-            "path": str(root),
             "languages_by_file_extension": _language_mix(root),
             "marker_files_present": [m for m in MARKER_FILES if (root / m).exists()],
         }
