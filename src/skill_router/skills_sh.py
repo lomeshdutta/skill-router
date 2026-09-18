@@ -50,6 +50,65 @@ def parse_find_output(text: str) -> list[RemoteSkill]:
     return results
 
 
+# Words that carry no search signal even when capitalised (sentence starts, common verbs/nouns).
+_QUERY_STOP = {
+    "a", "an", "the", "and", "or", "for", "with", "this", "that", "these", "those", "my", "our", "your",
+    "in", "on", "to", "of", "from", "into", "using", "use", "set", "up", "add", "build", "write", "make",
+    "create", "review", "deploy", "generate", "help", "me", "we", "i", "it", "is", "are", "each", "all",
+    "page", "app", "project", "product", "description", "problems", "policies", "queries", "screens",
+    "second", "seconds", "first", "new", "slow", "fast", "following", "questions", "over", "docs",
+}
+# Lower-case technology/vendor words worth keeping even when the user didn't capitalise them.
+_TECH_HINTS = {
+    "postgres", "postgresql", "mysql", "sqlite", "redis", "mongodb", "supabase", "neon", "prisma", "drizzle",
+    "react", "nextjs", "next.js", "vue", "svelte", "angular", "remix", "astro", "tailwind", "shadcn", "shadcn/ui",
+    "expo", "flutter", "swift", "kotlin", "android", "ios", "electron", "tauri",
+    "docker", "kubernetes", "k8s", "aks", "eks", "gke", "terraform", "aws", "azure", "gcp", "vercel", "netlify",
+    "cloudflare", "fly.io", "heroku", "railway", "render", "github", "gitlab", "ci", "cd",
+    "python", "typescript", "javascript", "node", "rust", "go", "golang", "java", "ruby", "rails", "django",
+    "fastapi", "flask", "laravel", "php", "graphql", "grpc", "rest", "openapi", "stripe", "twilio", "sendgrid",
+    "openai", "anthropic", "claude", "gemini", "langchain", "langgraph", "adk", "mcp", "rag", "llm", "agent",
+    "remotion", "ffmpeg", "figma", "storybook", "playwright", "cypress", "jest", "vitest", "pytest", "testing",
+    "video", "audio", "image", "seo", "analytics", "posthog", "segment", "mixpanel", "notion", "slack", "lark",
+    "salesforce", "hubspot", "shopify", "wordpress", "webflow", "framer", "unity", "unreal", "godot",
+}
+_WORD_RE = re.compile(r"[A-Za-z][A-Za-z0-9.+#/-]*")
+
+
+def extract_tech_terms(prompt: str, limit: int = 4) -> list[str]:
+    """Pull vendor/technology words out of a prompt: capitalised proper nouns (not at sentence
+    start) plus known lower-case tech words. Order preserved, duplicates dropped."""
+    terms: list[str] = []
+    seen: set[str] = set()
+    sentence_start = True
+    for raw in _WORD_RE.findall(prompt):
+        word = raw.strip(".,;:!?'\"")
+        low = re.sub(r"'s$", "", word.lower())
+        if not word or low in _QUERY_STOP:
+            sentence_start = raw.endswith((".", "?", "!"))
+            continue
+        is_proper = word[0].isupper() and not sentence_start and len(word) > 1 and not word.isupper() or (word.isupper() and 2 <= len(word) <= 5)
+        if (is_proper or low in _TECH_HINTS) and low not in seen:
+            seen.add(low)
+            terms.append(low)
+        sentence_start = raw.endswith((".", "?", "!"))
+        if len(terms) >= limit:
+            break
+    return terms
+
+
+def build_query(prompt: str, topic: str | None, task_kind: str | None) -> str:
+    """The query sent to `npx skills find`. Tech terms first; Jev's topic as a tie-breaker;
+    fall back to topic + task kind when the prompt names nothing specific."""
+    terms = extract_tech_terms(prompt)
+    if terms:
+        parts = terms[:3]
+        if topic and topic not in parts and len(parts) < 3:
+            parts.append(topic)
+        return " ".join(parts)
+    return " ".join(x for x in [topic, (task_kind or "").replace("_", " ")] if x).strip()
+
+
 def _cache_path(query: str) -> Path:
     key = re.sub(r"[^a-z0-9]+", "-", query.lower()).strip("-")[:80]
     return CACHE_DIR / f"find-{key}.json"

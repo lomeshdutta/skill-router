@@ -38,7 +38,7 @@ def cmd_suggest(args: argparse.Namespace) -> int:
     state = build_state(prompt, cwd=cwd)
     skills = catalog.discover(cwd)
     rec = route(state, skills)
-    remote = skills_sh.find(f"{rec.topic} {rec.task_kind.replace('_', ' ')}", limit=3) if (args.remote and rec.should_search_skills_sh and rec.topic) else []
+    remote = skills_sh.find(skills_sh.build_query(prompt, rec.topic, rec.task_kind), limit=3) if (args.remote and rec.should_search_skills_sh and rec.topic) else []
     if args.json:
         print(json.dumps({"state": state, "recommendation": rec.to_dict(), "remote": [r.to_dict() for r in remote]}, indent=2))
         return 0

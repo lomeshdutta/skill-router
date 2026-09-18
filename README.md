@@ -73,6 +73,17 @@ src/skill_router/
 tests/           offline tests (mock mode)
 ```
 
+## Eval
+
+`uv run python evals/run_eval.py` runs 20 prompts (10 installed skills, 10 that only exist on skills.sh) against real Jev and writes `evals/report-<date>.md`. Results on 2026-09-17:
+
+| Slice | Result |
+| --- | --- |
+| Installed skills, top-1 | 10/10 |
+| Installed skills, hook spoke with the right skill | 10/10 |
+| Not installed, no false local suggestion | 7/10 (misses: two Remotion/AI-video prompts matched the marketing `video` skill; a React perf prompt matched `code-review`) |
+| Not installed, target found on skills.sh | 9/10 with the tech-term query, up from 1/10 with the old topic query |
+
 ## Status
 
 - Proven (executed 2026-09-17, 8 prompts, real key): Jev picked `cold-email`, `last30days`, and an SEO audit skill correctly, and answered "none" for a time-zone question, a test fix, and a database choice. Median latency 462 ms, ~7,100 input tokens, about $0.0003 per prompt.

@@ -93,7 +93,7 @@ def run(payload: dict[str, Any], *, search_remote: bool = True) -> dict[str, Any
     rec = route(state, skills)
     remote: list[skills_sh.RemoteSkill] = []
     if search_remote and rec.should_search_skills_sh and rec.topic:
-        remote = skills_sh.find(f"{rec.topic} {rec.task_kind.replace('_', ' ')}", limit=3)
+        remote = skills_sh.find(skills_sh.build_query(prompt, rec.topic, rec.task_kind), limit=3)
     context, human = format_context(rec, remote)
     _log({
         "ts": time.time(),

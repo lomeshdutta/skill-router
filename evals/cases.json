@@ -1,0 +1,29 @@
+{
+  "installed": [
+    {"expect": "cold-email", "prompt": "draft a 3-step outreach sequence to VP Sales at fintech companies who have never heard of us"},
+    {"expect": "ab-testing", "prompt": "we want to test two versions of the pricing page headline. how long do we run it and how do I know the winner is real?"},
+    {"expect": "pricing", "prompt": "should we move from a flat $29/month plan to usage-based pricing for our API product?"},
+    {"expect": "pptx", "prompt": "turn these quarterly numbers into a 10-slide PowerPoint deck for the board"},
+    {"expect": "xlsx", "prompt": "build a spreadsheet model of MRR by signup cohort with a chart on a second tab"},
+    {"expect": "code-review", "prompt": "look over the diff on this branch for bugs before I open a PR"},
+    {"expect": "last30days", "prompt": "what have people been saying on Hacker News and Reddit about Cursor vs Claude Code lately?"},
+    {"expect": "eli5", "prompt": "explain how DNS works like I'm five, with pictures"},
+    {"expect": "firecrawl-scrape", "prompt": "grab the text of https://stripe.com/pricing as clean markdown"},
+    {"expect": "cto", "prompt": "am I ready to launch this project? run a launch readiness check and tell me what a CTO would flag"}
+  ],
+  "not_installed": [
+    {"expect": "supabase/agent-skills@supabase-postgres-best-practices", "prompt": "set up row level security policies in my Supabase Postgres database and speed up the slow queries"},
+    {"expect": "remotion-dev/skills@remotion-best-practices", "prompt": "build a programmatic video with Remotion that animates our launch stats"},
+    {"expect": "prisma/skills@prisma-database-setup", "prompt": "set up Prisma with Postgres in this Next.js app and write the first migration"},
+    {"expect": "shadcn/ui@shadcn", "prompt": "add a shadcn/ui data table with column sorting to the dashboard page"},
+    {"expect": "callstack/react-native-testing-library@react-native-testing", "prompt": "write component tests for my React Native screens using testing library"},
+    {"expect": "vercel-labs/agent-skills@vercel-react-best-practices", "prompt": "review this React component tree for performance problems following Vercel's React best practices"},
+    {"expect": "microsoft/azure-skills@azure-kubernetes", "prompt": "deploy this container to Azure Kubernetes Service with autoscaling"},
+    {"expect": "genmedia-labs/skills@ai-video-generation", "prompt": "generate a 15 second AI video ad from this product description"},
+    {"expect": "neondatabase/agent-skills@neon-postgres", "prompt": "create a Neon Postgres database branch for each preview deployment"},
+    {"expect": "google/agents-cli@google-agents-cli-adk-code", "prompt": "build an agent with Google's Agent Development Kit that answers questions over our docs"}
+  ],
+  "bonus_false_positive_checks": [
+    {"expect": null, "prompt": "Lets run a eval of this skill router by testing 10 installed skills and 10 not installed (skills.sh)"}
+  ]
+}

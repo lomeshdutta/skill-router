@@ -120,3 +120,11 @@ def test_load_dotenv_reads_key_without_overriding(tmp_path, monkeypatch):
     router.load_dotenv()
     assert os.environ["TYPESAFE_API_KEY"] == "abc123"
     assert os.environ["OTHER"] == "keep"
+
+
+def test_build_query_prefers_tech_terms():
+    q = skills_sh.build_query("set up row level security policies in my Supabase Postgres database and speed up the slow queries", "databases", "build_feature")
+    assert q.split()[:2] == ["supabase", "postgres"]
+    q2 = skills_sh.build_query("build an agent with Google's Agent Development Kit that answers questions over our docs", "agent-workflows", "build_feature")
+    assert "google" in q2 and "agent" in q2
+    assert skills_sh.build_query("help me think through this idea", "productivity", "planning_strategy") == "productivity planning strategy"
