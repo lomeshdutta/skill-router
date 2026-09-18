@@ -187,7 +187,8 @@ def test_intent_outcomes_in_mock_mode(tmp_path, monkeypatch, capsys):
     out = json.loads(capsys.readouterr().out)
     assert out["outcome"] == "A" and out["recommendation"]["skill"] == "cold-email"
     assert session.load("s1")["summary"] == "load /cold-email"
-    assert cli.main(["intent", "set", "--session", "s2", "--json", "what time is it"]) == 0
+    # goal before the options must work too (argparse handles this differently across builds)
+    assert cli.main(["intent", "set", "what time is it", "--session", "s2", "--json"]) == 0
     assert json.loads(capsys.readouterr().out)["outcome"] == "C"
 
 

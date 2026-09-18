@@ -219,7 +219,27 @@ def cmd_log(args: argparse.Namespace) -> int:
 
 
 # --------------------------------------------------------------------------- parser
+def _add_intent_arguments(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("action", choices=["set", "show", "clear"])
+    parser.add_argument("goal", nargs="*")
+    parser.add_argument("--session", help="session id (default: $CLAUDE_SESSION_ID or 'manual')")
+    parser.add_argument("--cwd")
+    parser.add_argument("--json", action="store_true")
+
+
 def main(argv: list[str] | None = None) -> int:
+    argv = list(sys.argv[1:] if argv is None else argv)
+    if argv and argv[0] == "intent" and not any(a in ("-h", "--help") for a in argv):
+        # Options and the free-text goal may come in any order (`intent set --json "goal"` or
+        # `intent set "goal" --json`). argparse only guarantees that with parse_intermixed_args,
+        # which does not work through subparsers, so the intent command gets its own parser.
+        intent_parser = argparse.ArgumentParser(prog="skill-router intent")
+        _add_intent_arguments(intent_parser)
+        args = intent_parser.parse_intermixed_args(argv[1:])
+        if args.action == "set" and use_mock():
+            print("note: running in MOCK mode (set TYPESAFE_API_KEY to use Jev)", file=sys.stderr)
+        return cmd_intent(args)
+
     ap = argparse.ArgumentParser(
         prog="skill-router",
         description="Predict which Claude Code skill a session needs (powered by Jev / TypeSafe AI).",
@@ -230,11 +250,7 @@ def main(argv: list[str] | None = None) -> int:
     ss.set_defaults(fn=cmd_session_start)
 
     it = sub.add_parser("intent", help="set, show, or clear the session goal and get a routing decision")
-    it.add_argument("action", choices=["set", "show", "clear"])
-    it.add_argument("goal", nargs="*")
-    it.add_argument("--session", help="session id (default: $CLAUDE_SESSION_ID or 'manual')")
-    it.add_argument("--cwd")
-    it.add_argument("--json", action="store_true")
+    _add_intent_arguments(it)
     it.set_defaults(fn=cmd_intent)
 
     s = sub.add_parser("suggest", help="classify one prompt (legacy per-prompt routing)")
@@ -269,6 +285,6 @@ def main(argv: list[str] | None = None) -> int:
     lg.set_defaults(fn=cmd_log)
 
     args = ap.parse_args(argv)
-    if args.cmd in ("suggest", "intent") and getattr(args, "action", "set") == "set" and use_mock():
+    if args.cmd == "suggest" and use_mock():
         print("note: running in MOCK mode (set TYPESAFE_API_KEY to use Jev)", file=sys.stderr)
     return args.fn(args)
