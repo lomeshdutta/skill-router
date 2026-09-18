@@ -81,6 +81,8 @@ def format_intent(rec: Recommendation, skills: list[catalog.SkillInfo], goal: st
 # --------------------------------------------------------------------------- commands
 def cmd_session_start(_args: argparse.Namespace) -> int:
     """Claude Code SessionStart hook. Never raises, never blocks."""
+    if os.environ.get(hook.DISABLE_ENV) == "1":
+        return 0
     try:
         payload = json.load(sys.stdin)
         source = payload.get("source", "startup")
@@ -134,9 +136,15 @@ def cmd_intent(args: argparse.Namespace) -> int:
         OUTCOME_SEARCH: "search skills.sh via find-skills",
         OUTCOME_NONE: "no skill needed",
     }[rec.outcome]
-    session.save(
-        sid, {"goal": goal, "cwd": cwd, "outcome": rec.outcome, "summary": summary, "recommendation": rec.to_dict()}
-    )
+    storage_note = ""
+    try:
+        session.save(
+            sid, {"goal": goal, "cwd": cwd, "outcome": rec.outcome, "summary": summary, "recommendation": rec.to_dict()}
+        )
+    except OSError as exc:
+        storage_note = f"\n(note: could not record the goal for this session: {exc}; routing still ran)"
+        hook._log({"error": f"session.save failed: {exc}", "where": "intent", "goal": goal})
+    text += storage_note
     hook._log(
         {
             "session_id": sid,

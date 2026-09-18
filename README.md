@@ -21,7 +21,7 @@ skill-router answers all three at the start of each session: it checks what you 
 1. You start a Claude Code session in a project where skill-router is set up.
 2. If your first message makes the goal clear, Claude works it out. If not, Claude asks one question: *"What are you trying to get done this session?"*
 3. Claude runs `skill-router intent set "<your goal>"`.
-4. The tool lists every skill installed on your machine and asks [Jev](https://typesafe.ai), a decision model from TypeSafe AI, to rank them against your goal. Jev is not a chat model. It returns a probability for each skill plus a confidence score, in under half a second, for a fraction of a cent.
+4. The tool lists every skill installed on your machine and asks [Jev](https://typesafe.ai), a decision model from TypeSafe AI, to rank them against your goal. Jev is not a chat model. It returns a probability for each skill plus a confidence score, typically in well under a second (about 0.35 s from the US West Coast; an independent run elsewhere saw about 5 s), for a fraction of a cent.
 5. You get one of three answers:
    - **Load this skill.** For example: `/cold-email (probability 1.00)`.
    - **Nothing you have installed fits.** Claude is told to search skills.sh for you using the [find-skills](https://skills.sh/vercel-labs/skills/find-skills) skill.
@@ -107,7 +107,7 @@ Skills you have switched off in Claude Code's settings are excluded.
 | Session goal, no skill would help: stayed quiet | 3 of 4 |
 | Single prompt, the right skill is installed: picked it | 10 of 10 |
 
-Reproducing these numbers needs a TypeSafe key and a similarly sized set of installed skills; mock mode runs the same harness but its scores are meaningless by design. The misses are kept in the report and explained there rather than tuned away. Every question Jev is asked, and every threshold, lives in one file: [`src/skill_router/questions.py`](src/skill_router/questions.py).
+Reproducing these numbers needs a TypeSafe key and a similarly sized set of installed skills; mock mode runs the same harness but its scores are meaningless by design. The misses are kept in the report and explained there rather than tuned away. An [independent review](evals/reports/2026-09-18-external-review.md) on another machine found two runtime bugs (both fixed, both now tested) and broadly matching routing behaviour. Every question Jev is asked, and every threshold, lives in one file: [`src/skill_router/questions.py`](src/skill_router/questions.py).
 
 ## Why a decision model instead of asking an LLM
 

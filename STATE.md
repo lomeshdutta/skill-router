@@ -32,11 +32,14 @@ A fresh agent (or human) must be able to resume this project from this file alon
 | Not-installed goals fall through to find-skills (outcome B) | Proven | same report 4/5; the 1 = Remotion → installed `video` skill whose description lists Remotion |
 | No-skill goals stay silent (outcome C) | Proven | same report 3/3 |
 | Median Jev latency ~360 ms, ~9,100 input tokens, ~$0.0004/call | Probable | 38 calls on one machine, US West Coast (evals/reports/2026-09-17.md) |
+| Disable switch and storage failures never break a session | Proven | tests `test_session_start_honours_disable`, `test_intent_survives_unwritable_session_dir` (2026-09-18) |
 | An outside reviewer can clone, run tests/lint/invariant/mock eval, and follow the README | Proven | Sonnet review agent on a fresh clone 2026-09-18: all four commands passed verbatim; findings fixed same day |
 | CI (lint, tests, invariant, mock eval) passes on ubuntu | Proven | GitHub Actions run 35306104800 on e888904, after fixing an argparse ordering bug the first run (35306020287) exposed |
 | The eval harness runs without a key | Proven | `SKILL_ROUTER_MOCK=1 uv run python evals/run_eval.py --no-remote --cwd .` wrote a mock report (numbers meaningless by design) |
 
 ## Work log
+
+- 2026-09-18: second external review (ChatGPT, own machine + key) found `SKILL_ROUTER_DISABLE` ignored by session-start and `intent set` crashing when the session dir is unwritable; both fixed with regression tests. Eval harness now skips absent skills in the goal slice too (their 1/10 was that defect). Review captured in evals/reports/2026-09-18-external-review.md.
 
 - 2026-09-18: outside review (Sonnet agent on a fresh clone) found two real gaps: SECURITY.md undersold the outbound payload (full path, branch, CLAUDE.md excerpt) and `intent set` could crash on a Jev outage. Fixed: absolute path no longer sent; intent wrapped, added to the invariant script and tests; SECURITY.md rewritten; settings example marked illustrative; README mock-mode disclosure. find-skills-missing now surfaced in outcome B. Project moved to ~/projects/skill-router; cloud eval workflow removed.
 

@@ -173,9 +173,13 @@ def eval_session_goals(report: Report, skills: list[catalog.SkillInfo]) -> None:
     )
     hits = {"A": 0, "B": 0, "C": 0}
     totals = {"A": 0, "B": 0, "C": 0}
+    names = {s.name for s in skills}
     slices = [("session_goals", "A"), ("session_goals_not_installed", "B"), ("session_goals_no_skill", "C")]
     for key, expected_outcome in slices:
         for c in CASES[key]:
+            if c.get("expect") and c["expect"] not in names:
+                print(f"[goal     ] {c['expect']:18s} skipped: not in this machine's catalog", flush=True)
+                continue
             rec = route(build_state(c["goal"], cwd=CWD, goal=True), skills)
             report.record(rec)
             expect_skill = c.get("expect")
@@ -198,8 +202,11 @@ def eval_session_goals(report: Report, skills: list[catalog.SkillInfo]) -> None:
                 "PASS" if ok else "MISS",
                 f"outcome={rec.outcome}",
             )
+    skipped = len(CASES["session_goals"]) - totals["A"]
     report.summary(
-        f"Installed goals → outcome A with the right skill: {hits['A']}/{totals['A']} · not-installed goals → B: {hits['B']}/{totals['B']} · no-skill goals → C: {hits['C']}/{totals['C']}"
+        f"Installed goals → outcome A with the right skill: {hits['A']}/{totals['A']}"
+        + (f" ({skipped} skipped, not installed here)" if skipped else "")
+        + f" · not-installed goals → B: {hits['B']}/{totals['B']} · no-skill goals → C: {hits['C']}/{totals['C']}"
     )
 
 

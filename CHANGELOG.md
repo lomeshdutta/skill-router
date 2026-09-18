@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- Fix: `session-start` now honours `SKILL_ROUTER_DISABLE=1`.
+- Fix: `intent set` no longer crashes when the session directory cannot be created; it prints the routing answer with a note.
+- Fix: the eval harness skips session-goal cases whose skill is not installed on the machine, matching the single-prompt slice.
+- Fix: the absolute project path is no longer sent to Jev; SECURITY.md lists every outbound field.
+- Outcome B tells the user when the find-skills skill is missing.
+
 ## 0.2.0 — 2026-09-17
 
 - Route once per session: a `SessionStart` hook asks Claude to establish the session goal (one question, only if unclear), then `skill-router intent set "<goal>"` reports one of three outcomes: installed skills to load, search skills.sh with the find-skills skill, or no skill needed.

@@ -77,3 +77,24 @@ def test_state_never_carries_absolute_path(tmp_path):
     state = build_state("do a thing", cwd=str(tmp_path))
     assert "path" not in state["project"]
     assert str(tmp_path) not in json.dumps(state)
+
+
+def test_session_start_honours_disable(monkeypatch, capsys):
+    from skill_router import cli
+
+    monkeypatch.setenv("SKILL_ROUTER_DISABLE", "1")
+    monkeypatch.setattr(sys, "stdin", io.StringIO(json.dumps({"session_id": "d1", "source": "startup"})))
+    assert cli.main(["session-start"]) == 0
+    assert capsys.readouterr().out == ""
+
+
+def test_intent_survives_unwritable_session_dir(monkeypatch, tmp_path, capsys):
+    from skill_router import cli, session
+
+    blocker = tmp_path / "blocker"
+    blocker.write_text("not a directory")
+    monkeypatch.setattr(session, "SESSIONS_DIR", blocker / "sessions")
+    monkeypatch.setattr(hook, "LOG_PATH", tmp_path / "log.jsonl")
+    assert cli.main(["intent", "set", "--session", "x", "--json", "draft cold emails"]) == 0
+    out = json.loads(capsys.readouterr().out)
+    assert "could not record the goal" in out["text"]
