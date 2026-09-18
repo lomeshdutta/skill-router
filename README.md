@@ -1,5 +1,7 @@
 # skill-router
 
+[![ci](https://github.com/lomeshdutta/skill-router/actions/workflows/ci.yml/badge.svg)](https://github.com/lomeshdutta/skill-router/actions/workflows/ci.yml)
+
 Tell Claude Code which of your installed skills a session needs. One question at the start, one fast decision, then silence.
 
 **Problem.** Claude Code skills pile up (this machine has 131 across project, user, plugin, app and built-in scopes). A skill that is installed but never invoked is a cost with no return, and Claude does not reliably notice on its own when one applies.
@@ -56,16 +58,16 @@ Switches: `SKILL_ROUTER_MOCK=1` force mock mode, `SKILL_ROUTER_DISABLE=1` silenc
 
 ## How well does it work
 
-`uv run python evals/run_eval.py` runs the cases in `evals/cases.json` against real Jev and writes `evals/reports/<date>.md`. On 2026-09-17, with 131 installed skills, none of the prompts naming the expected skill:
+`uv run python evals/run_eval.py` runs the cases in `evals/cases.json` against real Jev and writes `evals/reports/<date>.md` ([latest report](evals/reports/2026-09-17.md)). Maintainers can also trigger the **eval (real Jev)** workflow from the Actions tab; it needs a `TYPESAFE_API_KEY` repository secret and attaches the report to the run. On 2026-09-17, with 131 installed skills, none of the prompts naming the expected skill:
 
 | Slice | Result |
 | --- | --- |
 | Session goals whose skill is installed: top-1 with outcome A | 9/10 |
 | Session goals whose skill is only on skills.sh: outcome B | 4/5 |
-| Session goals needing no skill: outcome C | 3/3 |
+| Session goals needing no skill: outcome C | 3/4 |
 | Single prompts (legacy per-prompt mode): top-1 | 10/10 |
 
-The one installed-goal miss was `firecrawl-scrape` picked at 0.81 but gated to "no skill" by a low needs-a-skill probability; a threshold question, tracked in `STATE.md`. The one outcome-B miss was a Remotion goal routed to an installed marketing `video` skill whose description explicitly lists Remotion, which is correct by that skill's own claim.
+The one installed-goal miss was `firecrawl-scrape` picked at 0.81 but gated to "no skill" by a low needs-a-skill probability; a threshold question, tracked in `STATE.md`. The one outcome-B miss was a Remotion goal routed to an installed marketing `video` skill whose description explicitly lists Remotion, which is correct by that skill's own claim. The outcome-C miss is a "publish this repo" goal that Jev routed to a skills.sh search; kept in the eval as a known miss rather than tuned away.
 
 Every question Jev is asked and every threshold lives in [`src/skill_router/questions.py`](src/skill_router/questions.py). The decision log is the tuning set.
 

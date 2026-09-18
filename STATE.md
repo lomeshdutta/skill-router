@@ -18,7 +18,7 @@ A fresh agent (or human) must be able to resume this project from this file alon
 ## Approvals
 
 - Gate S (spec): approved 2026-09-17 — via plan approval (three-outcome session flow, find-skills hand-off without pre-seeding, cut list).
-- Gate P (publish): approved 2026-09-17 — github.com/lomeshdutta/skill-router, private first, public once CI is green; LICENSE and author "Lomesh Dutta"; history rewritten to that author before first push.
+- Gate P (publish): approved and executed 2026-09-17 — https://github.com/lomeshdutta/skill-router is PUBLIC (created private, flipped after CI run 35306104800 passed). LICENSE and author "Lomesh Dutta"; history rewritten before first push. Open: the TYPESAFE_API_KEY repo secret for the manual eval workflow is the owner's to add.
 
 ## Evidence ledger
 
@@ -32,9 +32,12 @@ A fresh agent (or human) must be able to resume this project from this file alon
 | Not-installed goals fall through to find-skills (outcome B) | Proven | same report 4/5; the 1 = Remotion → installed `video` skill whose description lists Remotion |
 | No-skill goals stay silent (outcome C) | Proven | same report 3/3 |
 | Median Jev latency ~360 ms, ~9,100 input tokens, ~$0.0004/call | Probable | 38 calls on one machine, US West Coast (evals/reports/2026-09-17.md) |
+| CI (lint, tests, invariant, mock eval) passes on ubuntu | Proven | GitHub Actions run 35306104800 on e888904, after fixing an argparse ordering bug the first run (35306020287) exposed |
 | The eval harness runs without a key | Proven | `SKILL_ROUTER_MOCK=1 uv run python evals/run_eval.py --no-remote --cwd .` wrote a mock report (numbers meaningless by design) |
 
 ## Work log
+
+- 2026-09-17 (late): published to github.com/lomeshdutta/skill-router; first CI run caught a Linux-only argparse bug in `intent`; fixed, second run green, repo made public. Fresh real eval committed (10/10, 9/10 A, 4/5 B, 3/4 C).
 
 - 2026-09-17 (night): G3 open-source hygiene landed; 19 tests, ruff, invariant, mock eval all green.
 - 2026-09-17 (later): G1 scaffold and G2 session-intent landed; find-skills installed globally; 19 tests + invariant green.
