@@ -17,6 +17,7 @@ import os
 import re
 import time
 from dataclasses import asdict, dataclass, field
+from pathlib import Path
 from typing import Any
 
 from skill_router import questions as Q
@@ -25,6 +26,28 @@ from skill_router.catalog import SkillInfo
 MOCK_ENV = "SKILL_ROUTER_MOCK"
 API_KEY_ENV = "TYPESAFE_API_KEY"
 DEFAULT_TIMEOUT_SECONDS = 8.0
+
+# Where the key may live when it is not already in the environment. The hook inherits
+# Claude Code's environment, which often lacks shell-profile exports, so we read these.
+_PROJECT_ROOT = Path(__file__).resolve().parents[2]
+DOTENV_CANDIDATES = [_PROJECT_ROOT / ".env", Path.home() / ".config" / "skill-router" / ".env"]
+
+
+def load_dotenv() -> None:
+    """Minimal .env reader: KEY=value lines, no expansion. Never overrides existing vars."""
+    for path in DOTENV_CANDIDATES:
+        try:
+            lines = path.read_text().splitlines()
+        except OSError:
+            continue
+        for line in lines:
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, _, val = line.partition("=")
+            key, val = key.strip(), val.strip().strip("\"'")
+            if key and val and key not in os.environ:
+                os.environ[key] = val
 
 
 @dataclass
@@ -75,6 +98,7 @@ class Recommendation:
 
 
 def use_mock() -> bool:
+    load_dotenv()
     return os.environ.get(MOCK_ENV) == "1" or not os.environ.get(API_KEY_ENV)
 
 

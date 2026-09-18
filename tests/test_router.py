@@ -94,3 +94,15 @@ def test_parse_skills_sh_find_output():
     assert [(r.package, r.skill, r.installs) for r in res] == [("affaan-m/ecc", "react-testing", "4.7K"), ("trungdo9/claukit", "seo-schema", "1")]
     assert res[0].install_command == "npx skills add affaan-m/ecc@react-testing"
     assert res[0].url.endswith("/react-testing")
+
+
+def test_load_dotenv_reads_key_without_overriding(tmp_path, monkeypatch):
+    from skill_router import router
+    env = tmp_path / ".env"
+    env.write_text("# comment\nTYPESAFE_API_KEY='abc123'\nOTHER=x\n")
+    monkeypatch.setattr(router, "DOTENV_CANDIDATES", [env])
+    monkeypatch.delenv("TYPESAFE_API_KEY", raising=False)
+    monkeypatch.setenv("OTHER", "keep")
+    router.load_dotenv()
+    assert os.environ["TYPESAFE_API_KEY"] == "abc123"
+    assert os.environ["OTHER"] == "keep"
