@@ -42,8 +42,22 @@ def test_discover_reads_project_and_respects_off_override(tmp_path, monkeypatch)
     (home / "skills").mkdir(parents=True)
     (home / "settings.json").write_text(json.dumps({"skillOverrides": {"beta": "off"}}))
     monkeypatch.setattr(catalog, "CLAUDE_HOME", home)
-    names = [s.name for s in catalog.discover(tmp_path / "proj")]
-    assert names == ["alpha"]
+    monkeypatch.setattr(catalog, "APP_SKILLS_GLOB", tmp_path / "no-app")
+    found = catalog.discover(tmp_path / "proj")
+    assert [s.name for s in found if s.scope != "builtin"] == ["alpha"]
+    assert "code-review" in {s.name for s in found if s.scope == "builtin"}
+
+
+def test_strong_pick_overrides_lukewarm_needs_skill():
+    from skill_router.router import Recommendation
+    base = dict(source="jev", model="m", latency_ms=1, task_kind="test", task_kind_confidence=1.0,
+                topic=None, topic_confidence=0.0)
+    strong = Recommendation(needs_skill=0.34, skill="xlsx", skill_confidence=0.97,
+                            skill_probabilities={"xlsx": 0.97, "dataviz": 0.02}, **base)
+    weak = Recommendation(needs_skill=0.34, skill="cto", skill_confidence=0.76,
+                          skill_probabilities={"cto": 0.77, "none": 0.23}, **base)
+    assert strong.should_suggest
+    assert not weak.should_suggest
 
 
 def test_mock_route_picks_obvious_skill():

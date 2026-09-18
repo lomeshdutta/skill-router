@@ -66,12 +66,15 @@ class Recommendation:
     usage: dict[str, int | None] = field(default_factory=dict)
 
     @property
+    def skill_probability(self) -> float:
+        return self.skill_probabilities.get(self.skill or "", 0.0)
+
+    @property
     def should_suggest(self) -> bool:
-        return (
-            self.needs_skill >= Q.NEEDS_SKILL_MIN
-            and self.skill is not None
-            and self.skill_confidence >= Q.SUGGEST_MIN_CONFIDENCE
-        )
+        if self.skill is None or self.skill_confidence < Q.SUGGEST_MIN_CONFIDENCE:
+            return False
+        strong_pick = self.skill_probability >= Q.STRONG_PICK_MIN_PROB
+        return self.needs_skill >= Q.NEEDS_SKILL_MIN or strong_pick
 
     @property
     def runners_up(self) -> list[tuple[str, float]]:

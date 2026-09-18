@@ -75,5 +75,6 @@ tests/           offline tests (mock mode)
 
 ## Status
 
-- Proven (executed): catalog discovery, mock routing, hook JSON contract, skills.sh search, request serialization.
-- Not yet claimed: real Jev accuracy. Needs a `TYPESAFE_API_KEY`; early access via console.typesafe.ai.
+- Proven (executed 2026-09-17, 8 prompts, real key): Jev picked `cold-email`, `last30days`, and an SEO audit skill correctly, and answered "none" for a time-zone question, a test fix, and a database choice. Median latency 462 ms, ~7,100 input tokens, about $0.0003 per prompt.
+- Proven: catalog discovery across project, user, plugin, desktop-app, and built-in scopes; hook JSON contract; skills.sh search.
+- Probable: thresholds. They were set by judgment, not tuned. Use `skill-router log` after a week of real prompts.

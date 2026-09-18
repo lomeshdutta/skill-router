@@ -23,8 +23,12 @@ from skill_router.catalog import SkillInfo
 SUGGEST_MIN_CONFIDENCE = 0.45
 # A skill whose probability is at or above this is worth mentioning as a runner-up.
 RUNNER_UP_MIN_PROB = 0.12
-# Below this needs_skill probability we stay silent: plain coding help is fine.
+# Below this needs_skill probability we stay silent: plain coding help is fine...
 NEEDS_SKILL_MIN = 0.50
+# ...unless Jev is this sure about ONE specific skill. Observed 2026-09-17: `code-review` at
+# p=1.00 and `xlsx` at p=0.97 arrived with needs_skill of only 0.37 / 0.34. A near-certain
+# pick is better evidence than the generic "does this need a skill?" question.
+STRONG_PICK_MIN_PROB = 0.85
 # Search skills.sh only when the prompt clearly wants a skill but nothing local fits well.
 SEARCH_SKILLS_SH_MIN_NEEDS = 0.60
 SEARCH_SKILLS_SH_MAX_LOCAL_PROB = 0.40
